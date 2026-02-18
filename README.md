@@ -145,6 +145,89 @@ triage --apply "fix the SQL injection"             # apply on new branch
 triage --remember "pre-launch security audit"
 ```
 
+## Recommended Use: Validate AI Plans Before You Build
+
+The highest-value way to use triage is **after an AI proposes a plan but before you implement it**.
+
+AI coding tools like Claude Code, Cursor, Windsurf, and Copilot often generate implementation plans — a set of proposed changes, a refactoring strategy, or an architecture for a new feature. These plans look reasonable, but a single model has blind spots. triage lets you get a second and third opinion before you invest time building.
+
+### Workflow
+
+```
+┌──────────────────────────────────────┐
+│  1. AI proposes a plan               │
+│     (Claude Code, Cursor, Copilot)   │
+│                                      │
+│  "Here's how I'd add auth..."        │
+│  → saves to plan.md or PLAN.md       │
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────┐
+│  2. triage reviews the plan          │
+│                                      │
+│  Three models independently check    │
+│  for gaps, risks, and better         │
+│  approaches                          │
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────┐
+│  3. You implement with confidence    │
+│                                      │
+│  Consensus issues are real.          │
+│  --remember saves them so your AI    │
+│  tools avoid the same mistakes.      │
+└──────────────────────────────────────┘
+```
+
+### How to do it
+
+**Review a plan file:**
+
+```bash
+# AI wrote a plan to plan.md — review it before implementing
+triage "review the implementation plan in /path/to/plan.md — \
+  check for security gaps, missing edge cases, scalability issues, \
+  and suggest improvements before I start building"
+```
+
+**Review a plan after Claude Code's plan mode:**
+
+```bash
+# Claude Code saves plans to .claude/ — pass it directly
+triage "review /home/user/project/.claude/plan.md — \
+  is this the right approach? what's missing? what could go wrong?"
+```
+
+**Review a diff after AI-generated code:**
+
+```bash
+# AI already wrote the code — review the changes before committing
+triage --diff-only "an AI generated these changes. review for \
+  correctness, security, and edge cases before I commit"
+```
+
+**Review and remember — so the implementing AI knows the risks:**
+
+```bash
+# Review the plan AND save findings to AI memory
+triage --remember "review /path/to/plan.md for risks and improvements"
+
+# Now when you tell Claude/Gemini/Codex to implement,
+# they see the triage findings in their memory files
+# and avoid the flagged issues
+```
+
+### Why this works
+
+| Without triage | With triage |
+|---------------|-------------|
+| One model proposes, one model implements — same blind spots | Three models independently review the plan |
+| Bugs ship because the implementing AI had the same gaps as the planning AI | Consensus findings surface real issues before any code is written |
+| You find problems after building | You find problems before building |
+| Fixing is expensive (rewrite) | Fixing is cheap (edit the plan) |
+
 ## Example Output
 
 Running `triage "find security issues in the login system"` produces a report like this:
