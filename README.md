@@ -20,31 +20,55 @@
 
 ---
 
-Stop trusting a single AI's opinion about your code. **triage** runs Claude (Anthropic), Gemini (Google), and Codex (OpenAI) in parallel against your codebase, then merges their findings with consensus detection. When all three models flag the same bug, you know it's real.
+> **One AI reviewer has blind spots. Three AI reviewers have consensus.**
 
-Works as a **CLI tool**, an **MCP server** for AI-native editors, or a **slash command** inside Claude Code.
+`triage` runs Claude (Anthropic), Gemini (Google), and Codex (OpenAI) **in parallel** against your codebase. Each model independently analyzes your code, then triage merges their findings — deduplicating overlaps, surfacing consensus, and flagging disagreements. The result is a single prioritized report where the issues that matter rise to the top.
 
-## Why Multi-Model?
+```bash
+pip install triage && triage "find security vulnerabilities"
+```
 
-A single AI code reviewer has blind spots. Different models catch different things:
+That's it. No config files. No API keys to manage. No setup. It uses the AI CLIs you already have installed.
 
-- **Claude** excels at architectural reasoning and security analysis
-- **Gemini** is strong on pattern recognition and edge cases
-- **Codex** brings deep code understanding and practical fixes
+## Why triage?
 
-triage runs all three simultaneously and **deduplicates overlapping findings**, **detects consensus** (2+ models agree), and **flags conflicts** when models disagree. The result is a single, prioritized report you can actually act on.
+### The problem with single-model code review
+
+Every AI model has different strengths and blind spots. Ask Claude, Gemini, and Codex to review the same code and you'll get three different reports with some overlap and some unique finds. Manually comparing those reports is tedious and error-prone.
+
+### What triage does differently
+
+**triage is the only tool that runs multiple AI models in parallel and merges their output into a single, deduplicated report with consensus scoring.**
+
+| What | How |
+|------|-----|
+| **3 models, 1 report** | Claude, Gemini, and Codex analyze your code simultaneously. You get one merged report, not three separate ones to compare. |
+| **Consensus = confidence** | When 2 or 3 models independently flag the same issue, it's marked as consensus. These are your highest-confidence findings — the ones most likely to be real bugs, not hallucinations. |
+| **Conflicts surface disagreements** | When models disagree on severity (e.g., Claude says S0 blocker, Codex says S2 medium), triage flags it so you can make the call. |
+| **Parallel, not sequential** | All models run at the same time via asyncio. Three opinions in the time it takes to get one. |
+| **Zero config** | Point it at your repo and describe what you want. triage auto-discovers relevant files, reads your git diff, and redacts secrets before any model sees your code. |
+| **Not a linter** | Linters enforce style rules. triage finds logic bugs, security vulnerabilities, race conditions, architectural issues — the things that are hard to write rules for. |
+
+### What each model brings
+
+- **Claude** (Anthropic) — Deep architectural reasoning, nuanced security analysis, strong understanding of complex control flow
+- **Gemini** (Google) — Pattern recognition across large codebases, edge case detection, thorough documentation review
+- **Codex** (OpenAI) — Practical code understanding, concrete fix suggestions, strong on common vulnerability patterns
+
+You don't need all three. Use `--models claude` for a quick single-model check, or `--models claude,gemini` for faster consensus with two models. But when it matters — security audits, pre-release reviews, unfamiliar codebases — three models catch what one misses.
 
 ## Features
 
-- **Parallel AI analysis** — Claude, Gemini, and Codex run concurrently via asyncio, not sequentially
-- **Consensus detection** — Issues found by 2+ models are highlighted with high confidence
-- **Conflict detection** — Surfaces disagreements between models on severity or approach
-- **Smart context gathering** — Auto-discovers relevant files from your prompt, git diff, directory structure, and keywords
-- **Secret redaction** — API keys, passwords, private keys, and credentials are stripped before any model sees your code
-- **Auto-patching** — Models propose unified diffs, safely applied on a new git branch
-- **MCP server** — First-class support for Claude Desktop, Claude Code, Cursor, Windsurf, Cline, and any MCP-compatible client
-- **Structured output** — Markdown reports for humans, JSON for CI/CD pipelines and automation
-- **Severity classification** — Findings ranked S0 (blocker) through S3 (style) for clear prioritization
+- **Parallel AI analysis** — Claude, Gemini, and Codex run concurrently, not sequentially. Three reviews in the time of one.
+- **Consensus detection** — Issues found by 2+ models are highlighted. High confidence, low false positive rate.
+- **Conflict detection** — Surfaces disagreements between models so you can make informed decisions.
+- **Smart context gathering** — Auto-discovers relevant files from your prompt, git diff, directory structure, and keywords. No file lists to maintain.
+- **Secret redaction** — API keys, passwords, private keys, and credentials are stripped before any model sees your code. Your secrets never leave your machine.
+- **Auto-patching** — Models propose unified diffs, safely applied on a new git branch. Preview with `--dry-run`.
+- **MCP server** — First-class support for Claude Desktop, Claude Code, Cursor, Windsurf, Cline, VS Code, Zed, and any MCP-compatible client.
+- **Structured output** — Markdown reports for humans, JSON for CI/CD pipelines and automation.
+- **Severity classification** — Findings ranked S0 (blocker) through S3 (style) for clear prioritization.
+- **Works with what you have** — Uses the AI CLIs already on your machine. No API keys to configure, no cloud service to sign up for.
 
 ## Installation
 
@@ -103,6 +127,84 @@ triage --format json --out report.json "find performance bottlenecks"
 triage --dry-run "fix the XSS vulnerability in user input"   # preview
 triage --apply "fix the SQL injection in the login handler"    # apply on new branch
 ```
+
+## Example Output
+
+Running `triage "find security issues in the login system"` produces a report like this:
+
+```markdown
+# Code Triage Report
+
+**Generated:** 2025-06-15 14:32:01
+**Duration:** 47.3s
+**Models:** claude, gemini, codex
+
+## Summary
+
+- **Total Issues:** 8
+- **Consensus (2+ models):** 3
+- **Blockers (S0):** 1
+- **High (S1):** 3
+- **Medium (S2):** 2
+- **Low (S3):** 2
+
+### Model Assessments
+
+**CLAUDE:** Found critical SQL injection in user lookup query and two
+authentication bypass vectors. Session handling lacks CSRF protection.
+
+**GEMINI:** Identified SQL injection in login query, weak password hashing
+(MD5), and missing rate limiting on the login endpoint.
+
+**CODEX:** Detected SQL injection vulnerability, plaintext password
+comparison fallback, and missing input sanitization on username field.
+
+## Blockers (S0)
+
+### 1. SQL Injection in User Lookup [CONSENSUS]
+
+- **Severity:** S0
+- **Confidence:** high
+- **Category:** security
+- **Location:** `auth/login.py:47-52`
+- **Models:** claude, gemini, codex
+
+**Evidence:**
+​```python
+query = f"SELECT * FROM users WHERE username = '{username}'"
+cursor.execute(query)
+​```
+
+**Recommendation:** Use parameterized queries to prevent SQL injection.
+
+**Proposed fix:**
+​```diff
+- query = f"SELECT * FROM users WHERE username = '{username}'"
+- cursor.execute(query)
++ query = "SELECT * FROM users WHERE username = %s"
++ cursor.execute(query, (username,))
+​```
+
+## Consensus Findings
+
+*Issues identified by 2+ models:*
+
+- [S0] **SQL Injection in User Lookup** (auth/login.py) - *claude, gemini, codex*
+- [S1] **Weak Password Hashing** (auth/utils.py) - *gemini, codex*
+- [S1] **Missing Rate Limiting** (auth/login.py) - *claude, gemini*
+
+## Recommended Plan
+
+1. **[BLOCKER]** SQL Injection in User Lookup - auth/login.py (consensus)
+2. **[HIGH]** Weak Password Hashing - auth/utils.py (consensus)
+3. **[HIGH]** Missing Rate Limiting - auth/login.py (consensus)
+```
+
+**Key things to notice:**
+- The SQL injection was found by **all three models** — high confidence it's real, not a hallucination
+- Each model's unique perspective is preserved in Model Assessments
+- The **Consensus Findings** section gives you a prioritized shortlist of what to fix first
+- Patches are included as unified diffs you can apply directly
 
 ## Use with Your Editor
 
@@ -313,6 +415,71 @@ export TRIAGE_CODEX_CMD="codex"         # default: codex
 | **Bug investigation** | `triage "why is the checkout flow failing for guest users?"` |
 | **Dependency audit** | `triage "check dependencies for known CVEs"` |
 | **Pre-merge gate** | `triage --format json --out report.json "security check"` |
+
+### Real-World Workflows
+
+#### Validate an AI-generated plan before launch
+
+You used Claude, Cursor, or Copilot to build a feature. Before you ship it, have three independent models check the work:
+
+```bash
+# AI built the feature — now let three other AIs review it
+triage --diff-only "I just built a payment integration using Stripe. \
+  Review for security issues, edge cases, and anything that could \
+  break in production before I launch."
+```
+
+This catches the things a single model misses in its own output — the hallucinated error handling, the missing edge case, the SQL injection it accidentally introduced. It's a second (and third) opinion on AI-generated code.
+
+#### Pre-commit sanity check
+
+Run triage on every significant change before you commit. Catches bugs while the context is fresh:
+
+```bash
+# Review just your uncommitted changes
+triage --diff-only "check for bugs, security issues, and missing error handling"
+```
+
+#### Audit an unfamiliar codebase
+
+Joining a new project or inheriting legacy code? Get a fast overview of where the risks are:
+
+```bash
+# Point triage at the whole project
+triage --max-files 100 "audit this codebase for security vulnerabilities, \
+  code quality issues, and technical debt. What should I fix first?"
+```
+
+#### Pre-release security gate
+
+Before every release, run a full security sweep. Use JSON output to integrate with your deployment pipeline:
+
+```bash
+triage --format json --out pre-release-audit.json \
+  "full OWASP Top 10 security audit — check authentication, \
+  authorization, injection, XSS, CSRF, and data exposure"
+```
+
+#### Review AI-to-AI code
+
+When one AI writes code and another AI reviews it, blind spots cancel out. Use triage as the reviewer step in any AI coding workflow:
+
+```bash
+# Step 1: Claude builds the feature (in Claude Code, Cursor, etc.)
+# Step 2: triage reviews with all three models
+triage "review the code that was just written. Check for correctness, \
+  security, edge cases, and whether the implementation matches \
+  the intended behavior."
+```
+
+#### Focused single-file deep dive
+
+When you know exactly where the problem is:
+
+```bash
+triage --max-files 5 "deep review /src/auth/oauth.py — check for \
+  token handling issues, session fixation, and PKCE implementation"
+```
 
 ## Development
 
