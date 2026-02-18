@@ -49,9 +49,9 @@ dev = [
 triage = "triage_cli.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/wyman101/triage"
-Repository = "https://github.com/wyman101/triage"
-Issues = "https://github.com/wyman101/triage/issues"
+Homepage = "https://github.com/wyman101/triage-ai"
+Repository = "https://github.com/wyman101/triage-ai"
+Issues = "https://github.com/wyman101/triage-ai/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -88,7 +88,7 @@ pipx install triage
 ### From GitHub
 
 ```bash
-pip install git+https://github.com/wyman101/triage.git
+pip install git+https://github.com/wyman101/triage-ai.git
 ```
 
 ### With MCP server support
@@ -651,7 +651,7 @@ triage --forget
 ## Development
 
 ```bash
-git clone https://github.com/wyman101/triage.git
+git clone https://github.com/wyman101/triage-ai.git
 cd triage
 pip install -e ".[dev]"
 pytest -v
@@ -678,7 +678,7 @@ triage_cli/
 
 ## Contributing
 
-Contributions welcome. Open an issue or PR at [github.com/wyman101/triage](https://github.com/wyman101/triage).
+Contributions welcome. Open an issue or PR at [github.com/wyman101/triage-ai](https://github.com/wyman101/triage-ai).
 
 Ideas for contribution:
 - Additional model adapters (Ollama, LM Studio, local models)
