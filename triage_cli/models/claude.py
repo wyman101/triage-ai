@@ -19,7 +19,8 @@ class ClaudeModel(SubprocessModel):
 
     def _build_command(self, prompt_file: str) -> list[str]:
         """Build Claude CLI command."""
+        # Unset CLAUDECODE so Claude CLI doesn't refuse to start when
+        # invoked from within an existing Claude Code session.
         # Claude CLI: -p for print mode, prompt as positional arg, --output-format text
-        # Matching the working verify_system.sh pattern
-        cmd_str = f"claude -p \"$(cat '{prompt_file}')\" --output-format text"
+        cmd_str = f"unset CLAUDECODE; claude -p \"$(cat '{prompt_file}')\" --output-format text"
         return ["bash", "-c", cmd_str]

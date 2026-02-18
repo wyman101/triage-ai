@@ -394,23 +394,26 @@ class SubprocessModel(BaseModel):
     async def _run_model(self, prompt: str, timeout: int, nice: int) -> str:
         """Run model via subprocess."""
         import asyncio
+        import signal
 
         # Write prompt to temp file
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
             f.write(prompt)
             prompt_file = f.name
 
+        process = None
         try:
-            # Build command with nice
+            # Build command with nice and timeout
             cmd = self._build_command(prompt_file)
             full_cmd = ['nice', '-n', str(nice), 'timeout', str(timeout)] + cmd
 
-            # Run async
+            # Run async — use process group so we can kill the entire tree
             process = await asyncio.create_subprocess_exec(
                 *full_cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=os.getcwd()
+                cwd=os.getcwd(),
+                start_new_session=True,  # New process group for clean kill
             )
 
             stdout, stderr = await process.communicate()
@@ -421,12 +424,38 @@ class SubprocessModel(BaseModel):
 
             return stdout.decode()
 
+        except (asyncio.CancelledError, Exception) as exc:
+            # Kill the entire process group on cancellation or error
+            if process and process.returncode is None:
+                try:
+                    pgid = os.getpgid(process.pid)
+                    os.killpg(pgid, signal.SIGTERM)
+                except (ProcessLookupError, OSError):
+                    pass
+                # Give processes a moment to exit, then force-kill
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=3)
+                except (asyncio.TimeoutError, Exception):
+                    try:
+                        pgid = os.getpgid(process.pid)
+                        os.killpg(pgid, signal.SIGKILL)
+                    except (ProcessLookupError, OSError):
+                        pass
+            raise exc
+
         finally:
             # Clean up temp file
             try:
                 os.unlink(prompt_file)
             except Exception:
                 pass
+            # Final safety: reap zombie if still running
+            if process and process.returncode is None:
+                try:
+                    process.kill()
+                    await process.wait()
+                except (ProcessLookupError, OSError):
+                    pass
 
     @abstractmethod
     def _build_command(self, prompt_file: str) -> list[str]:
