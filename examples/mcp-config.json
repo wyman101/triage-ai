@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "triage": {
-      "command": "python",
-      "args": ["-m", "triage_cli.mcp_server"],
+      "command": "triage-ai",
+      "args": ["--mcp"],
       "env": {}
     }
   }

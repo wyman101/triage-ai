@@ -1,0 +1,35 @@
+/**
+ * Claude model adapter.
+ *
+ * Uses the Claude CLI (claude command) for analysis.
+ * Prompt is passed via stdin in -p (print) mode.
+ *
+ * Ported from triage_cli/models/claude.py
+ */
+
+import { SubprocessModel } from './base.js';
+
+export class ClaudeModel extends SubprocessModel {
+  constructor() {
+    super();
+    this.name = 'claude';
+    this.cmdEnvVar = 'TRIAGE_CLAUDE_CMD';
+    this.defaultCmd = ['claude'];
+  }
+
+  /**
+   * Build Claude CLI command.
+   *
+   * Claude -p (print mode) reads from stdin when no positional prompt is given.
+   * CLAUDECODE env var is unset so Claude can run from within Claude Code sessions.
+   */
+  _buildCommand(_promptFile: string): {
+    cmd: string[];
+    env: Record<string, string | undefined>;
+  } {
+    return {
+      cmd: ['claude', '-p', '--output-format', 'text'],
+      env: { CLAUDECODE: undefined }, // Unset to allow nested sessions
+    };
+  }
+}

@@ -1,8 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+triage_results/
+*.log
+.DS_Store
+Thumbs.db
+
+# Python legacy (safe to keep)
 __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
-dist/
 build/
 *.egg
 .eggs/
@@ -15,8 +23,4 @@ env/
 .pytest_cache/
 .coverage
 htmlcov/
-triage_results/
-*.log
-.DS_Store
-Thumbs.db
 error_log

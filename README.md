@@ -1,19 +1,19 @@
-# triage
+# triage-ai
 
 **AI-powered code review using Claude, Gemini and Codex — running in parallel.**
 
 [Install](#installation) &bull; [Quick Start](#quick-start) &bull; [Editor Integration](#use-with-your-editor) &bull; [MCP Server](#mcp-server) &bull; [How It Works](#how-it-works)
 
-![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg) ![MIT License](https://img.shields.io/badge/license-MIT-green.svg) ![Claude | Gemini | Codex](https://img.shields.io/badge/models-Claude%20%7C%20Gemini%20%7C%20Codex-purple.svg) ![MCP Compatible](https://img.shields.io/badge/MCP-compatible-orange.svg)
+![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg) ![npm](https://img.shields.io/badge/npm-triage--ai-red.svg) ![MIT License](https://img.shields.io/badge/license-MIT-green.svg) ![Claude | Gemini | Codex](https://img.shields.io/badge/models-Claude%20%7C%20Gemini%20%7C%20Codex-purple.svg) ![MCP Compatible](https://img.shields.io/badge/MCP-compatible-orange.svg)
 
 ---
 
 > **One AI reviewer has blind spots. Three AI reviewers have consensus.**
 
-`triage` runs Claude (Anthropic), Gemini (Google) and Codex (OpenAI) **in parallel** against your codebase. Each model independently analyzes your code, then triage merges their findings — deduplicating overlaps, surfacing consensus and flagging disagreements. The result is a single prioritized report where the issues that matter rise to the top.
+`triage-ai` runs Claude (Anthropic), Gemini (Google) and Codex (OpenAI) **in parallel** against your codebase. Each model independently analyzes your code, then triage merges their findings — deduplicating overlaps, surfacing consensus and flagging disagreements. The result is a single prioritized report where the issues that matter rise to the top.
 
 ```bash
-pip install triage && triage "find security vulnerabilities"
+npm install -g triage-ai && triage-ai "find security vulnerabilities"
 ```
 
 That's it. No config files, no API keys to manage. It uses the AI CLIs you already have installed (`claude`, `gemini`, `codex` — you only need one).
@@ -26,16 +26,17 @@ Every AI model has different strengths and blind spots. Ask Claude, Gemini and C
 
 ### What triage does differently
 
-**triage is the only tool that runs multiple AI models in parallel and merges their output into a single, deduplicated report with consensus scoring.**
+**triage-ai is the only tool that runs multiple AI models in parallel and merges their output into a single, deduplicated report with consensus scoring.**
 
 | What | How |
 |------|-----|
 | **3 models, 1 report** | Claude, Gemini and Codex analyze your code simultaneously. You get one merged report, not three separate ones to compare. |
 | **Consensus = confidence** | When 2 or 3 models independently flag the same issue, it's marked as consensus. These are your highest-confidence findings — the ones most likely to be real bugs, not hallucinations. |
 | **Conflicts surface disagreements** | When models disagree on severity (e.g., Claude says S0 blocker, Codex says S2 medium), triage flags it so you can make the call. |
-| **Parallel, not sequential** | All models run at the same time via asyncio. Three opinions in the time it takes to get one. |
+| **Parallel execution** | All models run at the same time. Three opinions in the time it takes to get one. |
 | **Zero config** | Point it at your repo and describe what you want. triage auto-discovers relevant files, reads your git diff and redacts secrets before any model sees your code. |
 | **Not a linter** | Linters enforce style rules. triage finds logic bugs, security vulnerabilities, race conditions, architectural issues — the things that are hard to write rules for. |
+| **Auth detection** | If a CLI isn't logged in or has hit its rate limit, triage detects it and reports the issue with actionable instructions instead of silently failing. |
 
 ### What each model brings
 
@@ -52,11 +53,14 @@ You don't need all three. Use `--models claude` for a quick single-model check, 
 - **Conflict detection** — Surfaces disagreements between models so you can make informed decisions.
 - **Smart context gathering** — Auto-discovers relevant files from your prompt, git diff, directory structure and keywords. No file lists to maintain.
 - **Secret redaction** — API keys, passwords, private keys and credentials are stripped before any model sees your code. Your secrets never leave your machine.
+- **Auth & rate-limit detection** — Detects when a CLI isn't authenticated or has hit API limits, and reports actionable error messages instead of failing silently.
 - **Auto-patching** — Models propose unified diffs, safely applied on a new git branch. Preview with `--dry-run`.
 - **MCP server** — First-class support for Claude Desktop, Claude Code, Cursor, Windsurf, Cline, VS Code, Zed and any MCP-compatible client.
 - **Structured output** — Markdown reports for humans, JSON for CI/CD pipelines and automation.
 - **Severity classification** — Findings ranked S0 (blocker) through S3 (style) for clear prioritization.
 - **Cross-model memory** — Save findings to `CLAUDE.md`, `GEMINI.md` and `AGENTS.md` so every AI tool in your project remembers what triage found. Use `--remember` to write, `--forget` to clear.
+- **Rich progress display** — Real-time phase-by-phase progress in terminal (intake → team → assessment → diagnosis → report). Plain text fallback for CI/CD.
+- **Setup wizard** — `triage-ai setup` detects installed CLIs, shows paths and offers install instructions for missing ones.
 - **Works with what you have** — Uses the AI CLIs already on your machine. No API keys to configure, no cloud service to sign up for.
 
 ## Installation
@@ -64,30 +68,20 @@ You don't need all three. Use `--models claude` for a quick single-model check, 
 ### One-liner (recommended)
 
 ```bash
-pip install triage && triage "hello world"
+npm install -g triage-ai
 ```
 
-Or with [pipx](https://pipx.pypa.io/) for isolated install (no venv needed):
+### First run
 
 ```bash
-pipx install triage
+triage-ai setup
 ```
 
-### From GitHub
-
-```bash
-pip install git+https://github.com/wyman101/triage-ai.git
-```
-
-### With MCP server support
-
-```bash
-pip install "triage[mcp]"
-```
+This detects which AI CLIs are installed and shows their paths. If any are missing, it provides install commands.
 
 ### Prerequisites
 
-You need at least one AI CLI installed and authenticated. triage works with any combination — use all three for consensus, or just one for quick checks.
+You need [Node.js](https://nodejs.org/) 18+ and at least one AI CLI installed and authenticated. triage works with any combination — use all three for consensus, or just one for quick checks.
 
 | Model | CLI | Install |
 |-------|-----|---------|
@@ -100,14 +94,14 @@ You need at least one AI CLI installed and authenticated. triage works with any 
 ### 1. Install
 
 ```bash
-pip install triage
+npm install -g triage-ai
 ```
 
 ### 2. Run
 
 ```bash
 cd your-project
-triage "find bugs and security issues"
+triage-ai "find bugs and security issues"
 ```
 
 That's it. triage auto-discovers your files, runs Claude + Gemini + Codex in parallel and prints a merged report with consensus findings.
@@ -116,21 +110,21 @@ That's it. triage auto-discovers your files, runs Claude + Gemini + Codex in par
 
 ```bash
 # Use specific models (faster)
-triage --models claude,gemini "review for SQL injection"
-triage --models claude "quick single-model scan"
+triage-ai --models claude,gemini "review for SQL injection"
+triage-ai --models claude "quick single-model scan"
 
 # Review only uncommitted changes (great before a commit)
-triage --diff-only "check my changes for bugs"
+triage-ai --diff-only "check my changes for bugs"
 
 # Save report to file
-triage --out report.md "full security audit"
+triage-ai --out report.md "full security audit"
 
 # Auto-fix with patches
-triage --dry-run "fix the XSS vulnerability"     # preview first
-triage --apply "fix the SQL injection"             # apply on new branch
+triage-ai --dry-run "fix the XSS vulnerability"     # preview first
+triage-ai --apply "fix the SQL injection"             # apply on new branch
 
 # Save findings so Claude/Gemini/Codex remember them
-triage --remember "pre-launch security audit"
+triage-ai --remember "pre-launch security audit"
 ```
 
 ## Recommended Use: Validate AI Plans Before You Build
@@ -139,7 +133,7 @@ The highest-value way to use triage is **after an AI proposes a plan but before 
 
 AI coding tools like Claude Code, Cursor, Windsurf and Copilot often generate implementation plans — a set of proposed changes, a refactoring strategy, or an architecture for a new feature. These plans look reasonable, but a single model has blind spots. triage lets you get a second and third opinion before you invest time building.
 
-This works for **any** AI's plan — including triage's own. If you use `triage --apply` to generate patches, you can run triage again on the diff to validate its own output. Three models checking each other's work.
+This works for **any** AI's plan — including triage's own. If you use `triage-ai --apply` to generate patches, you can run triage again on the diff to validate its own output. Three models checking each other's work.
 
 ### Workflow
 
@@ -177,24 +171,16 @@ This works for **any** AI's plan — including triage's own. If you use `triage 
 
 ```bash
 # AI wrote a plan to plan.md — review it before implementing
-triage "review the implementation plan in /path/to/plan.md — \
+triage-ai "review the implementation plan in /path/to/plan.md — \
   check for security gaps, missing edge cases, scalability issues \
   and suggest improvements before I start building"
-```
-
-**Review a plan after Claude Code's plan mode:**
-
-```bash
-# Claude Code saves plans to .claude/ — pass it directly
-triage "review /home/user/project/.claude/plan.md — \
-  is this the right approach? what's missing? what could go wrong?"
 ```
 
 **Review a diff after AI-generated code:**
 
 ```bash
 # AI already wrote the code — review the changes before committing
-triage --diff-only "an AI generated these changes. review for \
+triage-ai --diff-only "an AI generated these changes. review for \
   correctness, security and edge cases before I commit"
 ```
 
@@ -202,7 +188,7 @@ triage --diff-only "an AI generated these changes. review for \
 
 ```bash
 # Review the plan AND save findings to AI memory
-triage --remember "review /path/to/plan.md for risks and improvements"
+triage-ai --remember "review /path/to/plan.md for risks and improvements"
 
 # Now when you tell Claude/Gemini/Codex to implement,
 # they see the triage findings in their memory files
@@ -213,59 +199,57 @@ triage --remember "review /path/to/plan.md for risks and improvements"
 
 ```bash
 # Step 1: triage proposes patches (dry-run, don't apply yet)
-triage --dry-run --out patches.md "fix security issues in auth/"
+triage-ai --dry-run --out patches.md "fix security issues in auth/"
 
 # Step 2: review triage's own proposed patches with fresh context
-triage "review the proposed patches in /path/to/patches.md — \
+triage-ai "review the proposed patches in /path/to/patches.md — \
   are these fixes correct? do they introduce new issues? \
   anything missed?"
 
 # Step 3: confident the patches are good — apply them
-triage --apply "fix security issues in auth/"
+triage-ai --apply "fix security issues in auth/"
 ```
-
-This creates a feedback loop: **Plan → Triage → Validate → Apply**. No single model gets the final say — not even triage itself.
-
-### Why this works
-
-| Without triage | With triage |
-|---------------|-------------|
-| One model proposes, one model implements — same blind spots | Three models independently review the plan |
-| Bugs ship because the implementing AI had the same gaps as the planning AI | Consensus findings surface real issues before any code is written |
-| You find problems after building | You find problems before building |
-| Fixing is expensive (rewrite) | Fixing is cheap (edit the plan) |
-| AI output is trusted blindly | AI output is validated by competing models |
 
 ## Example Output
 
-Running `triage "find security issues in the login system"` produces a report like this:
+Running `triage-ai "find security issues in the login system"` produces:
+
+```
+┌ triage-ai v2.0.0
+│
+├ Intake
+│  ✓ Scanned repository          42 files, 3 modified
+│  ✓ Redacted secrets             7 patterns masked
+│  ✓ Built context package        186 KB across 28 files
+│
+├ Triage Team
+│  ✓ Claude                       found at /usr/local/bin/claude
+│  ✓ Gemini                       found at /usr/local/bin/gemini
+│  ✗ Codex                        not installed (skipping)
+│
+├ Assessment
+│  ✓ Claude                       16 findings (47.3s)
+│  ✓ Gemini                       14 findings (38.2s)
+│
+├ Diagnosis
+│  ✓ Clustered findings           22 unique issues from 2 models
+│  ✓ Consensus detected           4 issues confirmed by 2+ models
+│  ✓ Conflicts identified         1 severity disagreement
+│
+├ Report
+│  ✓ Generated report             3 blockers, 5 high, 8 medium, 6 low
+│  ✓ Saved to triage_results/     merged.json + per-model outputs
+│
+└ Done in 52.3s — 22 findings, 4 consensus
+```
+
+The merged report highlights consensus findings:
 
 ```markdown
 # Code Triage Report
 
 **Generated:** 2025-06-15 14:32:01
-**Duration:** 47.3s
-**Models:** claude, gemini, codex
-
-## Summary
-
-- **Total Issues:** 8
-- **Consensus (2+ models):** 3
-- **Blockers (S0):** 1
-- **High (S1):** 3
-- **Medium (S2):** 2
-- **Low (S3):** 2
-
-### Model Assessments
-
-**CLAUDE:** Found critical SQL injection in user lookup query and two
-authentication bypass vectors. Session handling lacks CSRF protection.
-
-**GEMINI:** Identified SQL injection in login query, weak password hashing
-(MD5) and missing rate limiting on the login endpoint.
-
-**CODEX:** Detected SQL injection vulnerability, plaintext password
-comparison fallback and missing input sanitization on username field.
+**Models:** claude, gemini
 
 ## Blockers (S0)
 
@@ -275,50 +259,20 @@ comparison fallback and missing input sanitization on username field.
 - **Confidence:** high
 - **Category:** security
 - **Location:** `auth/login.py:47-52`
-- **Models:** claude, gemini, codex
-
-**Evidence:**
-​```python
-query = f"SELECT * FROM users WHERE username = '{username}'"
-cursor.execute(query)
-​```
-
-**Recommendation:** Use parameterized queries to prevent SQL injection.
-
-**Proposed fix:**
-​```diff
-- query = f"SELECT * FROM users WHERE username = '{username}'"
-- cursor.execute(query)
-+ query = "SELECT * FROM users WHERE username = %s"
-+ cursor.execute(query, (username,))
-​```
+- **Models:** claude, gemini
 
 ## Consensus Findings
 
-*Issues identified by 2+ models:*
-
-- [S0] **SQL Injection in User Lookup** (auth/login.py) - *claude, gemini, codex*
+- [S0] **SQL Injection in User Lookup** (auth/login.py) - *claude, gemini*
 - [S1] **Weak Password Hashing** (auth/utils.py) - *gemini, codex*
 - [S1] **Missing Rate Limiting** (auth/login.py) - *claude, gemini*
-
-## Recommended Plan
-
-1. **[BLOCKER]** SQL Injection in User Lookup - auth/login.py (consensus)
-2. **[HIGH]** Weak Password Hashing - auth/utils.py (consensus)
-3. **[HIGH]** Missing Rate Limiting - auth/login.py (consensus)
 ```
-
-**Key things to notice:**
-- The SQL injection was found by **all three models** — high confidence it's real, not a hallucination
-- Each model's unique perspective is preserved in Model Assessments
-- The **Consensus Findings** section gives you a prioritized shortlist of what to fix first
-- Patches are included as unified diffs you can apply directly
 
 ## Use with Your Editor
 
 ### MCP Server
 
-triage includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) server, making it available as a tool in any MCP-compatible AI coding assistant.
+triage-ai includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) server, making it available as a tool in any MCP-compatible AI coding assistant.
 
 Add to your editor's MCP configuration:
 
@@ -326,8 +280,8 @@ Add to your editor's MCP configuration:
 {
   "mcpServers": {
     "triage": {
-      "command": "python",
-      "args": ["-m", "triage_cli.mcp_server"]
+      "command": "triage-ai",
+      "args": ["--mcp"]
     }
   }
 }
@@ -369,14 +323,16 @@ Run in your pipeline to catch issues before merge:
 
 ```bash
 # Exit code 1 if any S0 (blocker) findings
-triage --format json --out triage-report.json "security audit" \
-  && python -c "
-import json, sys
-report = json.load(open('triage-report.json'))
-if report['summary']['blockers'] > 0:
-    print(f'BLOCKED: {report[\"summary\"][\"blockers\"]} blocker(s) found')
-    sys.exit(1)
-print('No blockers found')
+triage-ai --format json --out triage-report.json "security audit"
+
+# Check for blockers
+node -e "
+const report = JSON.parse(require('fs').readFileSync('triage-report.json', 'utf8'));
+if (report.summary.blockers > 0) {
+  console.error('BLOCKED: ' + report.summary.blockers + ' blocker(s) found');
+  process.exit(1);
+}
+console.log('No blockers found');
 "
 ```
 
@@ -395,7 +351,7 @@ print('No blockers found')
          │              └────────────────────────────────────┘
          ▼
 ┌──────────────────────────────────────────┐
-│        Parallel Execution (asyncio)      │
+│        Parallel Execution                │
 │                                          │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ │
 │  │  Claude  │ │  Gemini  │ │  Codex   │ │
@@ -438,7 +394,7 @@ print('No blockers found')
 ## CLI Reference
 
 ```
-triage [PROMPT] [OPTIONS]
+triage-ai [PROMPT] [OPTIONS]
 ```
 
 | Option | Default | Description |
@@ -455,6 +411,13 @@ triage [PROMPT] [OPTIONS]
 | `--remember` | off | Save findings to AI memory files (CLAUDE.md, GEMINI.md, AGENTS.md) |
 | `--forget` | — | Remove triage findings from memory files and exit |
 | `--verbose` | off | Show detailed progress output |
+| `--mcp` | — | Start as MCP server (for editor integration) |
+
+### Subcommands
+
+| Command | Description |
+|---------|-------------|
+| `triage-ai setup` | Detect installed CLIs, show paths, offer install instructions |
 
 ## Smart Context Discovery
 
@@ -465,7 +428,7 @@ You don't need to tell triage which files to look at. It figures it out:
 | **Explicit paths** | Paths mentioned in your prompt are read directly |
 | **Git diff** | Changed files get priority |
 | **Keyword search** | Words from your prompt are matched against filenames and file contents |
-| **Entrypoints** | Standard files like `main.py`, `app.py`, `pyproject.toml` are included automatically |
+| **Entrypoints** | Standard files like `main.py`, `app.py`, `package.json` are included automatically |
 
 Adjust scope with `--max-files`:
 
@@ -495,6 +458,17 @@ Sensitive and binary files are automatically excluded:
 - Binary files: images, executables, archives, compiled files
 - Junk directories: `node_modules`, `__pycache__`, `.git`, `venv`, `dist`
 
+### Auth & Rate Limit Detection
+
+triage detects when AI CLIs aren't properly authenticated or have hit rate limits:
+
+- **Not logged in** — Clear message with login instructions for each CLI
+- **API key issues** — Detects expired, invalid or missing API keys
+- **Rate limits** — Reports when a model has hit its usage cap
+- **Network errors** — Detects connection failures
+
+Failed models are reported in the progress display but don't block other models from completing.
+
 ### Patch Safety
 
 When using `--apply`:
@@ -514,44 +488,12 @@ Most AI coding tools read a project-level markdown file for context:
 | **Gemini CLI** | `GEMINI.md` | Read by Gemini for project context |
 | **Codex CLI** | `AGENTS.md` | Read by Codex/OpenAI agents for instructions |
 
-When you run `triage --remember`, findings are written into all three files using HTML comment markers (`<!-- triage:start -->` / `<!-- triage:end -->`). This means:
+When you run `triage-ai --remember`, findings are written into all three files using HTML comment markers (`<!-- triage:start -->` / `<!-- triage:end -->`). This means:
 
 1. **Every AI tool knows about the issues** — Claude, Gemini and Codex all see the findings next time you use them
 2. **Re-running replaces, not appends** — The triage section is swapped out on each run, keeping memory current
 3. **Your existing content is preserved** — triage only touches the section between its markers
-4. **Clean removal** — `triage --forget` removes the triage section from all files, leaving everything else intact
-
-### What gets written
-
-```markdown
-<!-- triage:start -->
-
-## Triage Findings
-
-*Last run: 2025-06-15 14:32 — 8 issues found, 3 consensus*
-
-> **Scope:** find security vulnerabilities in the login system
-
-### Blockers (must fix)
-
-- **[S0] SQL Injection in User Lookup** **(consensus)**
-  - Location: `auth/login.py:47-52`
-  - Models: claude, gemini, codex
-  - Fix: Use parameterized queries to prevent SQL injection.
-
-### Patterns to Watch
-
-These issues were flagged by multiple models — avoid introducing similar patterns:
-
-- **SQL Injection in User Lookup**: Use parameterized queries
-- **Weak Password Hashing**: Migrate from MD5 to bcrypt or argon2
-
-<!-- triage:end -->
-```
-
-### Why this matters
-
-Without `--remember`, triage findings exist only in the report. The next time you (or an AI) write code in this project, the same mistakes can be reintroduced. With `--remember`, every AI tool in your workflow is aware of the findings and actively avoids repeating them.
+4. **Clean removal** — `triage-ai --forget` removes the triage section from all files, leaving everything else intact
 
 ## Configuration
 
@@ -561,128 +503,67 @@ Override which CLI commands triage calls:
 export TRIAGE_CLAUDE_CMD="claude"       # default: claude
 export TRIAGE_GEMINI_CMD="gemini"       # default: gemini
 export TRIAGE_CODEX_CMD="codex"         # default: codex
+export TRIAGE_GEMINI_MODEL="gemini-2.5-pro"  # override Gemini model
 ```
+
+Config is stored at `~/.config/triage-ai/config.json` after first `triage-ai setup`.
 
 ## Use Cases
 
 | Scenario | Command |
 |----------|---------|
-| **Pre-commit review** | `triage --diff-only "review my changes for bugs"` |
-| **Security audit** | `triage "OWASP Top 10 vulnerability scan"` |
-| **Performance review** | `triage "find N+1 queries and memory leaks"` |
-| **Code quality check** | `triage "check for code smells and anti-patterns"` |
-| **Bug investigation** | `triage "why is the checkout flow failing for guest users?"` |
-| **Dependency audit** | `triage "check dependencies for known CVEs"` |
-| **Pre-merge gate** | `triage --format json --out report.json "security check"` |
-
-### Real-World Workflows
-
-#### Validate an AI-generated plan before launch
-
-You used Claude, Cursor, or Copilot to build a feature. Before you ship it, have three independent models check the work:
-
-```bash
-# AI built the feature — now let three other AIs review it
-triage --diff-only "I just built a payment integration using Stripe. \
-  Review for security issues, edge cases and anything that could \
-  break in production before I launch."
-```
-
-This catches the things a single model misses in its own output — the hallucinated error handling, the missing edge case, the SQL injection it accidentally introduced. It's a second (and third) opinion on AI-generated code.
-
-#### Pre-commit sanity check
-
-Run triage on every significant change before you commit. Catches bugs while the context is fresh:
-
-```bash
-# Review just your uncommitted changes
-triage --diff-only "check for bugs, security issues and missing error handling"
-```
-
-#### Audit an unfamiliar codebase
-
-Joining a new project or inheriting legacy code? Get a fast overview of where the risks are:
-
-```bash
-# Point triage at the whole project
-triage --max-files 100 "audit this codebase for security vulnerabilities, \
-  code quality issues and technical debt. What should I fix first?"
-```
-
-#### Pre-release security gate
-
-Before every release, run a full security sweep. Use JSON output to integrate with your deployment pipeline:
-
-```bash
-triage --format json --out pre-release-audit.json \
-  "full OWASP Top 10 security audit — check authentication, \
-  authorization, injection, XSS, CSRF and data exposure"
-```
-
-#### Review AI-to-AI code
-
-When one AI writes code and another AI reviews it, blind spots cancel out. Use triage as the reviewer step in any AI coding workflow:
-
-```bash
-# Step 1: Claude builds the feature (in Claude Code, Cursor, etc.)
-# Step 2: triage reviews with all three models
-triage "review the code that was just written. Check for correctness, \
-  security, edge cases and whether the implementation matches \
-  the intended behavior."
-```
-
-#### Focused single-file deep dive
-
-When you know exactly where the problem is:
-
-```bash
-triage --max-files 5 "deep review /src/auth/oauth.py — check for \
-  token handling issues, session fixation and PKCE implementation"
-```
-
-#### Remember findings across sessions
-
-Use `--remember` to write findings into AI memory files. Next time you open Claude, Gemini, or Codex in this project, they'll know about the issues triage found:
-
-```bash
-# Run triage and save findings to CLAUDE.md, GEMINI.md, AGENTS.md
-triage --remember "full security and code quality audit"
-```
-
-Now when you open Claude Code in this project, it sees the triage findings in `CLAUDE.md` and avoids reintroducing the same patterns. Same for Gemini (via `GEMINI.md`) and Codex (via `AGENTS.md`).
-
-```bash
-# Clear triage findings from memory files when issues are resolved
-triage --forget
-```
+| **Pre-commit review** | `triage-ai --diff-only "review my changes for bugs"` |
+| **Security audit** | `triage-ai "OWASP Top 10 vulnerability scan"` |
+| **Performance review** | `triage-ai "find N+1 queries and memory leaks"` |
+| **Code quality check** | `triage-ai "check for code smells and anti-patterns"` |
+| **Bug investigation** | `triage-ai "why is the checkout flow failing for guest users?"` |
+| **Dependency audit** | `triage-ai "check dependencies for known CVEs"` |
+| **Pre-merge gate** | `triage-ai --format json --out report.json "security check"` |
 
 ## Development
 
 ```bash
 git clone https://github.com/wyman101/triage-ai.git
-cd triage
-pip install -e ".[dev]"
-pytest -v
+cd triage-ai
+npm install
+npm run build
+node dist/cli.js --help
 ```
 
 ### Project Structure
 
 ```
-triage_cli/
-├── __main__.py       # CLI entry point & argument parser
-├── mcp_server.py     # MCP server for editor integration
-├── repo_scan.py      # Context gathering & secret redaction
-├── merge.py          # Finding deduplication & consensus
-├── report.py         # Markdown & JSON report generation
-├── patch.py          # Safe patch application
-├── models/
-│   ├── base.py       # Base model interface & prompt template
-│   ├── claude.py     # Claude (Anthropic) adapter
-│   ├── gemini.py     # Gemini (Google) adapter
-│   └── codex.py      # Codex (OpenAI) adapter
-└── tests/
-    └── test_merge.py # Merge engine tests
+src/
+├── cli.ts                # CLI entry point (commander.js)
+├── scanner.ts            # Context gathering & secret redaction
+├── setup.ts              # CLI detection & install wizard
+├── merge.ts              # Finding deduplication & consensus
+├── report.ts             # Markdown & JSON report generation
+├── memory.ts             # AI memory file writer
+├── patch.ts              # Safe patch application
+├── progress.ts           # Rich terminal progress display
+├── mcp-server.ts         # MCP server for editor integration
+├── types.ts              # Shared interfaces & helpers
+└── models/
+    ├── base.ts           # Base model & subprocess management
+    ├── claude.ts          # Claude (Anthropic) adapter
+    ├── gemini.ts          # Gemini (Google) adapter
+    └── codex.ts           # Codex (OpenAI) adapter
 ```
+
+## Migrating from Python
+
+If you previously installed the Python version:
+
+```bash
+# Remove Python version
+pip uninstall triage
+
+# Install npm version
+npm install -g triage-ai
+```
+
+The CLI flags are identical. Your existing `--remember` memory blocks in CLAUDE.md/GEMINI.md/AGENTS.md are fully compatible.
 
 ## Contributing
 

@@ -18,5 +18,5 @@ if [ -z "$PROMPT" ]; then
     exit 1
 fi
 
-triage "$PROMPT" --nice 10 --timeout 300 --verbose
+triage-ai "$PROMPT" --nice 10 --timeout 300 --verbose
 ```
