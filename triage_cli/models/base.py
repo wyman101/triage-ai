@@ -90,6 +90,7 @@ class Finding:
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Finding':
+        data = dict(data)  # Copy to avoid mutating caller's dict
         loc_data = data.pop('location', {})
         if isinstance(loc_data, dict):
             data['location'] = Location.from_dict(loc_data)
@@ -99,9 +100,10 @@ class Finding:
 
     def matches(self, other: 'Finding', threshold: float = 0.7) -> bool:
         """Check if this finding matches another (for deduplication)."""
-        # Same file and overlapping lines
+        # Same file and overlapping lines (only when both have valid positive line numbers)
         if self.location.path == other.location.path:
-            if (self.location.start_line <= other.location.end_line and
+            if (self.location.start_line > 0 and other.location.start_line > 0 and
+                self.location.start_line <= other.location.end_line and
                 self.location.end_line >= other.location.start_line):
                 return True
 

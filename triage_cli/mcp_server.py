@@ -130,13 +130,14 @@ async def call_tool(name: str, arguments: dict):
 
     model_names = [m.strip() for m in arguments.get("models", "claude,gemini,codex").split(",")]
     diff_only = arguments.get("diff_only", False)
-    max_files = arguments.get("max_files", 30)
+    max_files = max(1, min(200, int(arguments.get("max_files", 30))))
     output_format = arguments.get("format", "md")
-    timeout = arguments.get("timeout", 300)
+    timeout = max(30, min(1800, int(arguments.get("timeout", 300))))
 
-    # Create results directory
+    # Create results directory (UUID suffix prevents collisions under concurrent requests)
     from datetime import datetime
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    import uuid
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:8]
     results_dir = Path("./triage_results") / timestamp
     results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -157,11 +158,20 @@ async def call_tool(name: str, arguments: dict):
     ]
     raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    results = [r for r in raw_results if r is not None and not isinstance(r, Exception)]
+    results = []
+    errors = []
+    for i, r in enumerate(raw_results):
+        if isinstance(r, Exception):
+            errors.append(f"{model_names[i]}: {r}")
+        elif r is not None:
+            results.append(r)
+        else:
+            errors.append(f"{model_names[i]}: returned no output")
     elapsed = time.time() - start_time
 
     if not results:
-        return [TextContent(type="text", text="Error: All models failed")]
+        error_detail = "; ".join(errors) if errors else "unknown failure"
+        return [TextContent(type="text", text=f"Error: All models failed — {error_detail}")]
 
     # Merge results
     merger = MergeEngine()
@@ -173,6 +183,11 @@ async def call_tool(name: str, arguments: dict):
         report = reporter.to_json(merged, prompt, context, elapsed)
     else:
         report = reporter.to_markdown(merged, prompt, context, elapsed)
+
+    # Append model failure notes to report
+    if errors:
+        error_note = "\n\n**Note:** " + ", ".join(errors)
+        report += error_note
 
     # Save findings to AI memory files
     if arguments.get("remember", False):

@@ -23,8 +23,8 @@ SECRET_PATTERNS = [
     (r'(?i)(access[_-]?token)\s*[:=]\s*["\']?[\w-]{20,}["\']?', '[REDACTED_TOKEN]'),
     (r'(?i)(bearer)\s+[\w-]{20,}', '[REDACTED_BEARER]'),
 
-    # Private keys
-    (r'-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----.*?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----', '[REDACTED_PRIVATE_KEY]'),
+    # Private keys ((?s) enables DOTALL so .*? matches across newlines)
+    (r'(?s)-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----.*?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----', '[REDACTED_PRIVATE_KEY]'),
 
     # Passwords
     (r'(?i)(password|passwd|pwd)\s*[:=]\s*["\']?[^\s"\']{8,}["\']?', '[REDACTED_PASSWORD]'),

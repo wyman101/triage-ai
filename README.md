@@ -1,22 +1,10 @@
-<p align="center">
-  <h1 align="center">triage</h1>
-  <p align="center">
-    <strong>AI-powered code review using Claude, Gemini, and Codex — running in parallel.</strong>
-  </p>
-  <p align="center">
-    <a href="#installation">Install</a> &bull;
-    <a href="#quick-start">Quick Start</a> &bull;
-    <a href="#use-with-your-editor">Editor Integration</a> &bull;
-    <a href="#mcp-server">MCP Server</a> &bull;
-    <a href="#how-it-works">How It Works</a>
-  </p>
-  <p align="center">
-    <img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+">
-    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License">
-    <img src="https://img.shields.io/badge/models-Claude%20%7C%20Gemini%20%7C%20Codex-purple.svg" alt="Claude | Gemini | Codex">
-    <img src="https://img.shields.io/badge/MCP-compatible-orange.svg" alt="MCP Compatible">
-  </p>
-</p>
+# triage
+
+**AI-powered code review using Claude, Gemini, and Codex — running in parallel.**
+
+[Install](#installation) &bull; [Quick Start](#quick-start) &bull; [Editor Integration](#use-with-your-editor) &bull; [MCP Server](#mcp-server) &bull; [How It Works](#how-it-works)
+
+![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg) ![MIT License](https://img.shields.io/badge/license-MIT-green.svg) ![Claude | Gemini | Codex](https://img.shields.io/badge/models-Claude%20%7C%20Gemini%20%7C%20Codex-purple.svg) ![MCP Compatible](https://img.shields.io/badge/MCP-compatible-orange.svg)
 
 ---
 
@@ -28,7 +16,7 @@
 pip install triage && triage "find security vulnerabilities"
 ```
 
-That's it. No config files. No API keys to manage. No setup. It uses the AI CLIs you already have installed.
+That's it. No config files, no API keys to manage. It uses the AI CLIs you already have installed (`claude`, `gemini`, `codex` — you only need one).
 
 ## Why triage?
 

@@ -57,7 +57,8 @@ def write_memory(
     content = _build_memory_content(merged, prompt)
 
     if not content:
-        return {}
+        # No findings — clear any stale triage blocks from memory files
+        return clear_memory(root=root, models=models)
 
     results = {}
     for model in models:
