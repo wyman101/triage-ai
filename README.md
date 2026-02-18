@@ -109,24 +109,40 @@ You need at least one AI CLI installed and authenticated. triage works with any 
 
 ## Quick Start
 
+### 1. Install
+
 ```bash
-# Run all three models against your codebase
-triage "find security vulnerabilities in the authentication system"
+pip install triage
+```
 
-# Use specific models
-triage --models claude,gemini "review database queries for SQL injection"
-triage --models claude "quick single-model security scan"
+### 2. Run
 
-# Review only uncommitted changes (great for pre-commit)
-triage --diff-only "review my changes for bugs before I commit"
+```bash
+cd your-project
+triage "find bugs and security issues"
+```
 
-# Save the report
+That's it. triage auto-discovers your files, runs Claude + Gemini + Codex in parallel, and prints a merged report with consensus findings.
+
+### 3. More Examples
+
+```bash
+# Use specific models (faster)
+triage --models claude,gemini "review for SQL injection"
+triage --models claude "quick single-model scan"
+
+# Review only uncommitted changes (great before a commit)
+triage --diff-only "check my changes for bugs"
+
+# Save report to file
 triage --out report.md "full security audit"
-triage --format json --out report.json "find performance bottlenecks"
 
 # Auto-fix with patches
-triage --dry-run "fix the XSS vulnerability in user input"   # preview
-triage --apply "fix the SQL injection in the login handler"    # apply on new branch
+triage --dry-run "fix the XSS vulnerability"     # preview first
+triage --apply "fix the SQL injection"             # apply on new branch
+
+# Save findings so Claude/Gemini/Codex remember them
+triage --remember "pre-launch security audit"
 ```
 
 ## Example Output
