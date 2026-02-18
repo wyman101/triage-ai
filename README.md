@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">triage-ai</h1>
+  <h1 align="center">triage</h1>
   <p align="center">
     <strong>AI-powered code review using Claude, Gemini, and Codex — running in parallel.</strong>
   </p>
@@ -20,7 +20,7 @@
 
 ---
 
-Stop trusting a single AI's opinion about your code. **triage-ai** runs Claude (Anthropic), Gemini (Google), and Codex (OpenAI) in parallel against your codebase, then merges their findings with consensus detection. When all three models flag the same bug, you know it's real.
+Stop trusting a single AI's opinion about your code. **triage** runs Claude (Anthropic), Gemini (Google), and Codex (OpenAI) in parallel against your codebase, then merges their findings with consensus detection. When all three models flag the same bug, you know it's real.
 
 Works as a **CLI tool**, an **MCP server** for AI-native editors, or a **slash command** inside Claude Code.
 
@@ -32,7 +32,7 @@ A single AI code reviewer has blind spots. Different models catch different thin
 - **Gemini** is strong on pattern recognition and edge cases
 - **Codex** brings deep code understanding and practical fixes
 
-triage-ai runs all three simultaneously and **deduplicates overlapping findings**, **detects consensus** (2+ models agree), and **flags conflicts** when models disagree. The result is a single, prioritized report you can actually act on.
+triage runs all three simultaneously and **deduplicates overlapping findings**, **detects consensus** (2+ models agree), and **flags conflicts** when models disagree. The result is a single, prioritized report you can actually act on.
 
 ## Features
 
@@ -51,30 +51,30 @@ triage-ai runs all three simultaneously and **deduplicates overlapping findings*
 ### One-liner (recommended)
 
 ```bash
-pip install triage-ai && triage "hello world"
+pip install triage && triage "hello world"
 ```
 
 Or with [pipx](https://pipx.pypa.io/) for isolated install (no venv needed):
 
 ```bash
-pipx install triage-ai
+pipx install triage
 ```
 
 ### From GitHub
 
 ```bash
-pip install git+https://github.com/wyman101/triage-ai.git
+pip install git+https://github.com/wyman101/triage.git
 ```
 
 ### With MCP server support
 
 ```bash
-pip install "triage-ai[mcp]"
+pip install "triage[mcp]"
 ```
 
 ### Prerequisites
 
-You need at least one AI CLI installed and authenticated. triage-ai works with any combination — use all three for consensus, or just one for quick checks.
+You need at least one AI CLI installed and authenticated. triage works with any combination — use all three for consensus, or just one for quick checks.
 
 | Model | CLI | Install |
 |-------|-----|---------|
@@ -108,14 +108,14 @@ triage --apply "fix the SQL injection in the login handler"    # apply on new br
 
 ### MCP Server
 
-triage-ai includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) server, making it available as a tool in any MCP-compatible AI coding assistant.
+triage includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) server, making it available as a tool in any MCP-compatible AI coding assistant.
 
 Add to your editor's MCP configuration:
 
 ```json
 {
   "mcpServers": {
-    "triage-ai": {
+    "triage": {
       "command": "python",
       "args": ["-m", "triage_cli.mcp_server"]
     }
@@ -246,7 +246,7 @@ triage [PROMPT] [OPTIONS]
 
 ## Smart Context Discovery
 
-You don't need to tell triage-ai which files to look at. It figures it out:
+You don't need to tell triage which files to look at. It figures it out:
 
 | Source | How It Works |
 |--------|-------------|
@@ -294,7 +294,7 @@ When using `--apply`:
 
 ## Configuration
 
-Override which CLI commands triage-ai calls:
+Override which CLI commands triage calls:
 
 ```bash
 export TRIAGE_CLAUDE_CMD="claude"       # default: claude
@@ -317,8 +317,8 @@ export TRIAGE_CODEX_CMD="codex"         # default: codex
 ## Development
 
 ```bash
-git clone https://github.com/wyman101/triage-ai.git
-cd triage-ai
+git clone https://github.com/wyman101/triage.git
+cd triage
 pip install -e ".[dev]"
 pytest -v
 ```
@@ -344,7 +344,7 @@ triage_cli/
 
 ## Contributing
 
-Contributions welcome. Open an issue or PR at [github.com/wyman101/triage-ai](https://github.com/wyman101/triage-ai).
+Contributions welcome. Open an issue or PR at [github.com/wyman101/triage](https://github.com/wyman101/triage).
 
 Ideas for contribution:
 - Additional model adapters (Ollama, LM Studio, local models)

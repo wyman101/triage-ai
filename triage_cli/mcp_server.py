@@ -1,12 +1,12 @@
 """
-MCP (Model Context Protocol) server for triage-ai.
+MCP (Model Context Protocol) server for triage.
 
 Exposes triage functionality as MCP tools that any MCP-compatible client
 (Claude Desktop, Claude Code, Cursor, etc.) can call.
 
 Usage:
     # Install with MCP support
-    pip install triage-ai[mcp]
+    pip install triage[mcp]
 
     # Run the MCP server
     python -m triage_cli.mcp_server
@@ -24,7 +24,7 @@ try:
     from mcp.types import Tool, TextContent
 except ImportError:
     print("MCP support requires the 'mcp' package. Install with:", file=sys.stderr)
-    print("  pip install triage-ai[mcp]", file=sys.stderr)
+    print("  pip install triage[mcp]", file=sys.stderr)
     sys.exit(1)
 
 from .repo_scan import RepoScanner
@@ -35,7 +35,7 @@ from .merge import MergeEngine
 from .report import ReportGenerator
 
 
-server = Server("triage-ai")
+server = Server("triage")
 
 
 def get_model_instances(model_names: list[str]) -> list:
