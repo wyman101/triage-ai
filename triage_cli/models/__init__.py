@@ -1,4 +1,4 @@
-"""Model adapters for Claude, Gemini, and Codex."""
+"""Model adapters for Claude, Gemini and Codex."""
 
 from .base import ModelResult, Finding, Patch
 from .claude import ClaudeModel

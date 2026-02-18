@@ -14,8 +14,10 @@ Usage:
 
 import asyncio
 import json
+import shutil
 import sys
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 try:
@@ -38,6 +40,10 @@ from .memory import write_memory
 
 server = Server("triage")
 
+# Max results directories to keep (oldest pruned first)
+MAX_RESULTS_DIRS = 20
+RESULTS_BASE = Path("./triage_results")
+
 
 def get_model_instances(model_names: list[str]) -> list:
     """Get model instances for the requested models."""
@@ -58,8 +64,24 @@ async def run_model_async(model, prompt, context, results_dir, timeout, nice):
     """Run a single model asynchronously."""
     try:
         return await model.analyze(prompt, context, results_dir, timeout, nice)
+    except asyncio.CancelledError:
+        # Re-raise so gather can handle cleanup
+        raise
     except Exception as e:
         return None
+
+
+def _prune_results_dirs():
+    """Remove old results directories, keeping only the newest MAX_RESULTS_DIRS."""
+    if not RESULTS_BASE.exists():
+        return
+    dirs = sorted(RESULTS_BASE.iterdir(), key=lambda d: d.stat().st_mtime, reverse=True)
+    for old_dir in dirs[MAX_RESULTS_DIRS:]:
+        if old_dir.is_dir():
+            try:
+                shutil.rmtree(old_dir)
+            except OSError:
+                pass
 
 
 @server.list_tools()
@@ -69,8 +91,8 @@ async def list_tools():
         Tool(
             name="triage",
             description=(
-                "Run multi-model code triage using Claude, Gemini, and Codex in parallel. "
-                "Analyzes code for bugs, security issues, performance problems, and more. "
+                "Run multi-model code triage using Claude, Gemini and Codex in parallel. "
+                "Analyzes code for bugs, security issues, performance problems and more. "
                 "Models run concurrently and findings are merged with consensus detection."
             ),
             inputSchema={
@@ -135,11 +157,13 @@ async def call_tool(name: str, arguments: dict):
     timeout = max(30, min(1800, int(arguments.get("timeout", 300))))
 
     # Create results directory (UUID suffix prevents collisions under concurrent requests)
-    from datetime import datetime
     import uuid
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:8]
-    results_dir = Path("./triage_results") / timestamp
+    results_dir = RESULTS_BASE / timestamp
     results_dir.mkdir(parents=True, exist_ok=True)
+
+    # Prune old results
+    _prune_results_dirs()
 
     # Scan repository
     scanner = RepoScanner()
@@ -150,13 +174,25 @@ async def call_tool(name: str, arguments: dict):
     if not models:
         return [TextContent(type="text", text="Error: No valid models specified")]
 
-    # Run models in parallel
+    # Run models in parallel with cancellation handling
     start_time = time.time()
     tasks = [
-        run_model_async(model, prompt, context, results_dir, timeout, 10)
+        asyncio.create_task(
+            run_model_async(model, prompt, context, results_dir, timeout, 10)
+        )
         for model in models
     ]
-    raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    try:
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+    except asyncio.CancelledError:
+        # MCP client cancelled the request — kill all running model tasks
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        # Wait for tasks to finish cancellation (subprocess cleanup happens in base.py)
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
 
     results = []
     errors = []

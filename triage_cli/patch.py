@@ -7,6 +7,7 @@ Handles:
 - Limiting scope of changes
 """
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -81,6 +82,7 @@ class PatchApplicator:
                 ['git', 'checkout', '-b', branch_name],
                 capture_output=True,
                 text=True,
+                stdin=subprocess.DEVNULL,
                 timeout=10
             )
             if result.returncode == 0:
@@ -119,10 +121,11 @@ class PatchApplicator:
         has_plus = any(line.startswith('+++') or line.startswith('+') for line in lines)
         has_hunk = any(line.startswith('@@') for line in lines)
 
-        return has_minus and has_plus
+        return has_minus and has_plus and has_hunk
 
     def _patch_applies_cleanly(self, patch: Patch) -> bool:
         """Check if patch applies cleanly (dry run)."""
+        patch_file = None
         try:
             with tempfile.NamedTemporaryFile(mode='w', suffix='.patch', delete=False) as f:
                 f.write(patch.diff)
@@ -132,20 +135,25 @@ class PatchApplicator:
                 ['patch', '--dry-run', '-p1', '-i', patch_file],
                 capture_output=True,
                 text=True,
+                stdin=subprocess.DEVNULL,
                 timeout=10
             )
-
-            import os
-            os.unlink(patch_file)
-
             return result.returncode == 0
 
         except Exception as e:
             print(f"Error checking patch: {e}")
             return False
 
+        finally:
+            if patch_file:
+                try:
+                    os.unlink(patch_file)
+                except OSError:
+                    pass
+
     def _do_apply_patch(self, patch: Patch) -> bool:
         """Actually apply the patch."""
+        patch_file = None
         try:
             with tempfile.NamedTemporaryFile(mode='w', suffix='.patch', delete=False) as f:
                 f.write(patch.diff)
@@ -155,11 +163,9 @@ class PatchApplicator:
                 ['patch', '-p1', '-i', patch_file],
                 capture_output=True,
                 text=True,
+                stdin=subprocess.DEVNULL,
                 timeout=10
             )
-
-            import os
-            os.unlink(patch_file)
 
             if result.returncode == 0:
                 print(f"Applied patch to {patch.path}")
@@ -171,6 +177,13 @@ class PatchApplicator:
         except Exception as e:
             print(f"Error applying patch: {e}")
             return False
+
+        finally:
+            if patch_file:
+                try:
+                    os.unlink(patch_file)
+                except OSError:
+                    pass
 
     def show_patches(self, patches: list[Patch]) -> str:
         """Show patches without applying (dry run output)."""

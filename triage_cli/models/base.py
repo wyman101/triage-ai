@@ -7,7 +7,7 @@ import os
 import subprocess
 import tempfile
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, fields as dataclass_fields, asdict
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -51,7 +51,8 @@ class Location:
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Location':
-        return cls(**data)
+        valid = {f.name for f in dataclass_fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in valid})
 
 
 @dataclass
@@ -67,7 +68,8 @@ class Patch:
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Patch':
-        return cls(**data)
+        valid = {f.name for f in dataclass_fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in valid})
 
 
 @dataclass
@@ -96,7 +98,22 @@ class Finding:
             data['location'] = Location.from_dict(loc_data)
         else:
             data['location'] = Location(path='unknown')
-        return cls(**data)
+        # Filter to valid fields only — AI models often return extra keys
+        valid = {f.name for f in dataclass_fields(cls)}
+        filtered = {k: v for k, v in data.items() if k in valid}
+        # Provide defaults for missing required fields
+        defaults = {
+            'title': 'Untitled',
+            'severity': 'S3',
+            'confidence': 'low',
+            'category': 'correctness',
+            'evidence': '',
+            'recommendation': '',
+        }
+        for key, default in defaults.items():
+            if key not in filtered:
+                filtered[key] = default
+        return cls(**filtered)
 
     def matches(self, other: 'Finding', threshold: float = 0.7) -> bool:
         """Check if this finding matches another (for deduplication)."""
@@ -135,6 +152,11 @@ class InspectedFile:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, data: dict) -> 'InspectedFile':
+        valid = {f.name for f in dataclass_fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in valid})
+
 
 @dataclass
 class ModelResult:
@@ -160,7 +182,7 @@ class ModelResult:
     @classmethod
     def from_dict(cls, data: dict) -> 'ModelResult':
         findings = [Finding.from_dict(f) for f in data.get('findings', [])]
-        inspected = [InspectedFile(**i) for i in data.get('inspected', [])]
+        inspected = [InspectedFile.from_dict(i) for i in data.get('inspected', [])]
         return cls(
             model=data.get('model', 'unknown'),
             summary=data.get('summary', ''),
@@ -389,34 +411,59 @@ class BaseModel(ABC):
 
 
 class SubprocessModel(BaseModel):
-    """Model that runs via subprocess."""
+    """Model that runs via subprocess.
+
+    Subclasses implement _build_command() which returns:
+      (cmd_args, env_overrides)
+
+    - cmd_args: list of command arguments (NO shell, NO bash -c)
+    - env_overrides: dict of env var changes (None value = unset the key)
+
+    The prompt is passed via stdin. The base class handles:
+    - Writing prompt to temp file for debugging
+    - Passing prompt via stdin to the subprocess
+    - Applying env overrides
+    - Process group cleanup on error/cancellation
+    """
 
     async def _run_model(self, prompt: str, timeout: int, nice: int) -> str:
-        """Run model via subprocess."""
+        """Run model via subprocess with stdin-based prompt passing."""
         import asyncio
         import signal
 
-        # Write prompt to temp file
+        # Write prompt to temp file for debugging (saved to results_dir by analyze())
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
             f.write(prompt)
             prompt_file = f.name
 
         process = None
         try:
-            # Build command with nice and timeout
-            cmd = self._build_command(prompt_file)
+            # Build command — no shell, no bash -c
+            cmd, extra_env = self._build_command(prompt_file)
+
+            # Build clean environment with overrides
+            run_env = os.environ.copy()
+            for k, v in extra_env.items():
+                if v is None:
+                    run_env.pop(k, None)  # Unset
+                else:
+                    run_env[k] = v
+
             full_cmd = ['nice', '-n', str(nice), 'timeout', str(timeout)] + cmd
 
             # Run async — use process group so we can kill the entire tree
             process = await asyncio.create_subprocess_exec(
                 *full_cmd,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=run_env,
                 cwd=os.getcwd(),
                 start_new_session=True,  # New process group for clean kill
             )
 
-            stdout, stderr = await process.communicate()
+            # Pass prompt via stdin — no shell expansion of untrusted content
+            stdout, stderr = await process.communicate(input=prompt.encode())
 
             if process.returncode != 0:
                 error_msg = stderr.decode() if stderr else f"Exit code {process.returncode}"
@@ -464,6 +511,14 @@ class SubprocessModel(BaseModel):
             pass
 
     @abstractmethod
-    def _build_command(self, prompt_file: str) -> list[str]:
-        """Build the command to run. Must be implemented by subclass."""
+    def _build_command(self, prompt_file: str) -> tuple[list[str], dict]:
+        """Build the command to run. Returns (cmd_args, env_overrides).
+
+        - cmd_args: list of command arguments (no shell involvement)
+        - env_overrides: dict of env var changes (None = unset)
+        - prompt_file: path to temp file with prompt (for adapters that need file-based passing)
+
+        The prompt is passed via stdin by default. Adapters should configure
+        their CLI tool to read from stdin when possible.
+        """
         pass

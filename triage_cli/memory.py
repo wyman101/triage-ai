@@ -2,7 +2,7 @@
 Memory writer — saves triage findings to AI model memory files.
 
 After triage runs, findings are written to model-specific memory files
-so that Claude, Gemini, and Codex remember issues in future sessions.
+so that Claude, Gemini and Codex remember issues in future sessions.
 
 Supported memory files:
 - CLAUDE.md     — Claude Code project instructions
@@ -106,6 +106,9 @@ def clear_memory(
         try:
             existing = filepath.read_text(encoding="utf-8")
             if MEMORY_START not in existing:
+                continue
+            if MEMORY_END not in existing:
+                print(f"  Warning: {filename} has start marker but no end marker — skipping")
                 continue
 
             # Remove the triage section

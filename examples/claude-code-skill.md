@@ -1,4 +1,4 @@
-# Triage — Run parallel AI code analysis with Claude, Gemini, and Codex
+# Triage — Run parallel AI code analysis with Claude, Gemini and Codex
 
 ## Setup
 

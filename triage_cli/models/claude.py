@@ -2,6 +2,7 @@
 Claude model adapter.
 
 Uses the Claude CLI (claude command) for analysis.
+Prompt is passed via stdin in -p (print) mode.
 """
 
 import os
@@ -17,10 +18,13 @@ class ClaudeModel(SubprocessModel):
         self.cmd_env_var = "TRIAGE_CLAUDE_CMD"
         self.default_cmd = ["claude"]
 
-    def _build_command(self, prompt_file: str) -> list[str]:
-        """Build Claude CLI command."""
-        # Unset CLAUDECODE so Claude CLI doesn't refuse to start when
-        # invoked from within an existing Claude Code session.
-        # Claude CLI: -p for print mode, prompt as positional arg, --output-format text
-        cmd_str = f"unset CLAUDECODE; claude -p \"$(cat '{prompt_file}')\" --output-format text"
-        return ["bash", "-c", cmd_str]
+    def _build_command(self, prompt_file: str) -> tuple[list[str], dict]:
+        """Build Claude CLI command.
+
+        Claude -p (print mode) reads from stdin when no positional prompt is given.
+        CLAUDECODE env var is unset so Claude can run from within Claude Code sessions.
+        """
+        return (
+            ["claude", "-p", "--output-format", "text"],
+            {"CLAUDECODE": None},  # Unset to allow nested sessions
+        )
