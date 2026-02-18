@@ -12,7 +12,12 @@ license = {text = "MIT"}
 authors = [
     {name = "wyman101"}
 ]
-keywords = ["code-review", "triage", "claude", "gemini", "codex", "ai", "multi-model", "static-analysis"]
+keywords = [
+    "code-review", "triage", "claude", "gemini", "codex", "openai", "anthropic", "google",
+    "ai", "multi-model", "static-analysis", "security-audit", "code-quality",
+    "mcp", "model-context-protocol", "cursor", "windsurf", "cline",
+    "linter", "bug-detection", "consensus", "llm",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
