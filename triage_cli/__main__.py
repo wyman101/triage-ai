@@ -26,6 +26,7 @@ from .models.codex import CodexModel
 from .merge import MergeEngine
 from .report import ReportGenerator
 from .patch import PatchApplicator
+from .memory import write_memory, clear_memory
 
 
 def parse_args() -> argparse.Namespace:
@@ -112,6 +113,18 @@ Examples:
         type=Path,
         default=Path("./triage_results"),
         help="Directory to store intermediate results"
+    )
+
+    parser.add_argument(
+        "--remember",
+        action="store_true",
+        help="Save findings to AI memory files (CLAUDE.md, GEMINI.md, AGENTS.md)"
+    )
+
+    parser.add_argument(
+        "--forget",
+        action="store_true",
+        help="Remove triage findings from AI memory files and exit"
     )
 
     parser.add_argument(
@@ -202,6 +215,12 @@ async def run_models_parallel(
 def main():
     """Main entry point."""
     args = parse_args()
+
+    # Handle --forget (clear memory and exit)
+    if args.forget:
+        print("Clearing triage findings from AI memory files...")
+        clear_memory()
+        return 0
 
     # Check for prompt
     if not args.prompt:
@@ -299,6 +318,11 @@ def main():
                 branch_name=f"triage/{timestamp}"
             )
             print(f"\nApplied {applied} patches to branch triage/{timestamp}")
+
+    # Save findings to AI memory files
+    if args.remember:
+        print("\n=== Saving to AI Memory ===\n")
+        write_memory(merged, args.prompt)
 
     # Save merged results
     merged_path = results_dir / "merged.json"

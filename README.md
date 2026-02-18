@@ -68,6 +68,7 @@ You don't need all three. Use `--models claude` for a quick single-model check, 
 - **MCP server** — First-class support for Claude Desktop, Claude Code, Cursor, Windsurf, Cline, VS Code, Zed, and any MCP-compatible client.
 - **Structured output** — Markdown reports for humans, JSON for CI/CD pipelines and automation.
 - **Severity classification** — Findings ranked S0 (blocker) through S3 (style) for clear prioritization.
+- **Cross-model memory** — Save findings to `CLAUDE.md`, `GEMINI.md`, and `AGENTS.md` so every AI tool in your project remembers what triage found. Use `--remember` to write, `--forget` to clear.
 - **Works with what you have** — Uses the AI CLIs already on your machine. No API keys to configure, no cloud service to sign up for.
 
 ## Installation
@@ -344,6 +345,8 @@ triage [PROMPT] [OPTIONS]
 | `--dry-run` | off | Preview patches without applying |
 | `--timeout` | 300 | Per-model timeout in seconds |
 | `--nice` | 10 | CPU priority for subprocesses |
+| `--remember` | off | Save findings to AI memory files (CLAUDE.md, GEMINI.md, AGENTS.md) |
+| `--forget` | — | Remove triage findings from memory files and exit |
 | `--verbose` | off | Show detailed progress output |
 
 ## Smart Context Discovery
@@ -393,6 +396,55 @@ When using `--apply`:
 - Patches are **dry-run tested** before applying
 - Maximum **5 files** modified per session
 - **Non-git repos are refused** — no accidental writes to untracked projects
+
+## AI Memory (`--remember`)
+
+Most AI coding tools read a project-level markdown file for context:
+
+| Tool | Memory File | What It Does |
+|------|-------------|-------------|
+| **Claude Code** | `CLAUDE.md` | Loaded into every Claude session in this project |
+| **Gemini CLI** | `GEMINI.md` | Read by Gemini for project context |
+| **Codex CLI** | `AGENTS.md` | Read by Codex/OpenAI agents for instructions |
+
+When you run `triage --remember`, findings are written into all three files using HTML comment markers (`<!-- triage:start -->` / `<!-- triage:end -->`). This means:
+
+1. **Every AI tool knows about the issues** — Claude, Gemini, and Codex all see the findings next time you use them
+2. **Re-running replaces, not appends** — The triage section is swapped out on each run, keeping memory current
+3. **Your existing content is preserved** — triage only touches the section between its markers
+4. **Clean removal** — `triage --forget` removes the triage section from all files, leaving everything else intact
+
+### What gets written
+
+```markdown
+<!-- triage:start -->
+
+## Triage Findings
+
+*Last run: 2025-06-15 14:32 — 8 issues found, 3 consensus*
+
+> **Scope:** find security vulnerabilities in the login system
+
+### Blockers (must fix)
+
+- **[S0] SQL Injection in User Lookup** **(consensus)**
+  - Location: `auth/login.py:47-52`
+  - Models: claude, gemini, codex
+  - Fix: Use parameterized queries to prevent SQL injection.
+
+### Patterns to Watch
+
+These issues were flagged by multiple models — avoid introducing similar patterns:
+
+- **SQL Injection in User Lookup**: Use parameterized queries
+- **Weak Password Hashing**: Migrate from MD5 to bcrypt or argon2
+
+<!-- triage:end -->
+```
+
+### Why this matters
+
+Without `--remember`, triage findings exist only in the report. The next time you (or an AI) write code in this project, the same mistakes can be reintroduced. With `--remember`, every AI tool in your workflow is aware of the findings and actively avoids repeating them.
 
 ## Configuration
 
@@ -479,6 +531,22 @@ When you know exactly where the problem is:
 ```bash
 triage --max-files 5 "deep review /src/auth/oauth.py — check for \
   token handling issues, session fixation, and PKCE implementation"
+```
+
+#### Remember findings across sessions
+
+Use `--remember` to write findings into AI memory files. Next time you open Claude, Gemini, or Codex in this project, they'll know about the issues triage found:
+
+```bash
+# Run triage and save findings to CLAUDE.md, GEMINI.md, AGENTS.md
+triage --remember "full security and code quality audit"
+```
+
+Now when you open Claude Code in this project, it sees the triage findings in `CLAUDE.md` and avoids reintroducing the same patterns. Same for Gemini (via `GEMINI.md`) and Codex (via `AGENTS.md`).
+
+```bash
+# Clear triage findings from memory files when issues are resolved
+triage --forget
 ```
 
 ## Development

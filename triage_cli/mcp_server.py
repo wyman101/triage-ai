@@ -33,6 +33,7 @@ from .models.gemini import GeminiModel
 from .models.codex import CodexModel
 from .merge import MergeEngine
 from .report import ReportGenerator
+from .memory import write_memory
 
 
 server = Server("triage")
@@ -105,6 +106,11 @@ async def list_tools():
                         "description": "Timeout per model in seconds (default: 300)",
                         "default": 300
                     },
+                    "remember": {
+                        "type": "boolean",
+                        "description": "Save findings to AI memory files (CLAUDE.md, GEMINI.md, AGENTS.md)",
+                        "default": False
+                    },
                 },
                 "required": ["prompt"]
             }
@@ -167,6 +173,10 @@ async def call_tool(name: str, arguments: dict):
         report = reporter.to_json(merged, prompt, context, elapsed)
     else:
         report = reporter.to_markdown(merged, prompt, context, elapsed)
+
+    # Save findings to AI memory files
+    if arguments.get("remember", False):
+        write_memory(merged, prompt)
 
     # Save merged results
     merged_path = results_dir / "merged.json"
