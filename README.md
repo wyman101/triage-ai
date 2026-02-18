@@ -151,6 +151,8 @@ The highest-value way to use triage is **after an AI proposes a plan but before 
 
 AI coding tools like Claude Code, Cursor, Windsurf, and Copilot often generate implementation plans — a set of proposed changes, a refactoring strategy, or an architecture for a new feature. These plans look reasonable, but a single model has blind spots. triage lets you get a second and third opinion before you invest time building.
 
+This works for **any** AI's plan — including triage's own. If you use `triage --apply` to generate patches, you can run triage again on the diff to validate its own output. Three models checking each other's work.
+
 ### Workflow
 
 ```
@@ -219,6 +221,23 @@ triage --remember "review /path/to/plan.md for risks and improvements"
 # and avoid the flagged issues
 ```
 
+**Triage its own output — validate patches before applying:**
+
+```bash
+# Step 1: triage proposes patches (dry-run, don't apply yet)
+triage --dry-run --out patches.md "fix security issues in auth/"
+
+# Step 2: review triage's own proposed patches with fresh context
+triage "review the proposed patches in /path/to/patches.md — \
+  are these fixes correct? do they introduce new issues? \
+  anything missed?"
+
+# Step 3: confident the patches are good — apply them
+triage --apply "fix security issues in auth/"
+```
+
+This creates a feedback loop: **Plan → Triage → Validate → Apply**. No single model gets the final say — not even triage itself.
+
 ### Why this works
 
 | Without triage | With triage |
@@ -227,6 +246,7 @@ triage --remember "review /path/to/plan.md for risks and improvements"
 | Bugs ship because the implementing AI had the same gaps as the planning AI | Consensus findings surface real issues before any code is written |
 | You find problems after building | You find problems before building |
 | Fixing is expensive (rewrite) | Fixing is cheap (edit the plan) |
+| AI output is trusted blindly | AI output is validated by competing models |
 
 ## Example Output
 
