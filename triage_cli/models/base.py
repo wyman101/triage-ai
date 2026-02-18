@@ -425,22 +425,15 @@ class SubprocessModel(BaseModel):
             return stdout.decode()
 
         except (asyncio.CancelledError, Exception) as exc:
-            # Kill the entire process group on cancellation or error
+            # Kill the process group on cancellation or error.
+            # start_new_session=True guarantees PGID == process.pid,
+            # so we use process.pid directly (no getpgid race).
+            self._kill_process_group(process, signal.SIGTERM)
             if process and process.returncode is None:
-                try:
-                    pgid = os.getpgid(process.pid)
-                    os.killpg(pgid, signal.SIGTERM)
-                except (ProcessLookupError, OSError):
-                    pass
-                # Give processes a moment to exit, then force-kill
                 try:
                     await asyncio.wait_for(process.wait(), timeout=3)
                 except (asyncio.TimeoutError, Exception):
-                    try:
-                        pgid = os.getpgid(process.pid)
-                        os.killpg(pgid, signal.SIGKILL)
-                    except (ProcessLookupError, OSError):
-                        pass
+                    self._kill_process_group(process, signal.SIGKILL)
             raise exc
 
         finally:
@@ -451,11 +444,24 @@ class SubprocessModel(BaseModel):
                 pass
             # Final safety: reap zombie if still running
             if process and process.returncode is None:
+                self._kill_process_group(process, signal.SIGKILL)
                 try:
-                    process.kill()
                     await process.wait()
-                except (ProcessLookupError, OSError):
+                except Exception:
                     pass
+
+    @staticmethod
+    def _kill_process_group(process, sig):
+        """Safely kill a process group. Only targets the group we created."""
+        if not process or process.returncode is not None:
+            return
+        pgid = process.pid  # start_new_session=True → PGID == PID
+        if pgid <= 1:
+            return  # Never kill init or our own process group
+        try:
+            os.killpg(pgid, sig)
+        except (ProcessLookupError, OSError):
+            pass
 
     @abstractmethod
     def _build_command(self, prompt_file: str) -> list[str]:
