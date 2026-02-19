@@ -13,9 +13,7 @@ export declare class CodexModel extends SubprocessModel {
     /**
      * Build Codex CLI command.
      *
-     * Default: --full-auto --sandbox read-only — full codebase exploration
-     * (read files, search) while preventing any writes.
-     * Context-only: plain exec mode — minimal flags, analyses only the provided context.
+     * Uses --full-auto --sandbox read-only for non-interactive read-only operation.
      * We read the prompt file synchronously and pass the text directly —
      * no shell expansion, no bash -c.
      */

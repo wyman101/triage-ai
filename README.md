@@ -87,7 +87,7 @@ triage-ai --remember "pre-launch security audit"
 ## Example Output
 
 ```
-┌ triage-ai v1.0.4
+┌ triage-ai v1.0.6
 │
 ├ Intake
 │  ✓ Scanned repository          42 files, 3 modified

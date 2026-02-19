@@ -20,9 +20,7 @@ export class GeminiModel extends SubprocessModel {
   /**
    * Build Gemini CLI command.
    *
-   * Default: --approval-mode plan — full codebase exploration (read files,
-   * search) while preventing any writes.
-   * Context-only: plain -p mode — no tool use, analyses only the provided context.
+   * Uses -p mode for non-interactive pipe operation.
    * Model selection via TRIAGE_GEMINI_MODEL env var (optional).
    */
   _buildCommand(_promptFile: string): {
@@ -31,9 +29,6 @@ export class GeminiModel extends SubprocessModel {
   } {
     const model = process.env['TRIAGE_GEMINI_MODEL'] ?? '';
     const cmd = ['gemini', '-p'];
-    if (!this.contextOnly) {
-      cmd.push('--approval-mode', 'plan');
-    }
     if (model) {
       cmd.push('-m', model);
     }

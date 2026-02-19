@@ -22,9 +22,7 @@ export class CodexModel extends SubprocessModel {
   /**
    * Build Codex CLI command.
    *
-   * Default: --full-auto --sandbox read-only — full codebase exploration
-   * (read files, search) while preventing any writes.
-   * Context-only: plain exec mode — minimal flags, analyses only the provided context.
+   * Uses --full-auto --sandbox read-only for non-interactive read-only operation.
    * We read the prompt file synchronously and pass the text directly —
    * no shell expansion, no bash -c.
    */
@@ -33,11 +31,7 @@ export class CodexModel extends SubprocessModel {
     env: Record<string, string | undefined>;
   } {
     const promptText = readFileSync(promptFile, 'utf8');
-    const cmd = ['codex', 'exec'];
-    if (!this.contextOnly) {
-      cmd.push('--full-auto', '--sandbox', 'read-only');
-    }
-    cmd.push('--skip-git-repo-check', promptText);
+    const cmd = ['codex', 'exec', '--full-auto', '--sandbox', 'read-only', '--skip-git-repo-check', promptText];
     return {
       cmd,
       env: {},

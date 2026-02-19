@@ -28,7 +28,7 @@ import { BaseModel } from './models/base.js';
 // Version (aligned with package.json)
 // ---------------------------------------------------------------------------
 
-const VERSION = '1.0.4';
+const VERSION = '1.0.6';
 
 // ---------------------------------------------------------------------------
 // Config path
@@ -233,18 +233,24 @@ function writeMemory(merged: MergedResult, prompt: string): void {
   const block = lines.join('\n') + '\n';
 
   const memFiles = ['CLAUDE.md', 'GEMINI.md', 'AGENTS.md'];
+  let written = 0;
   for (const file of memFiles) {
     const full = resolve(process.cwd(), file);
-    if (!existsSync(full)) continue;
-    const existing = readFileSync(full, 'utf8');
-    const replaced = existing.replace(
-      /<!-- triage-ai:start -->[\s\S]*?<!-- triage-ai:end -->\n?/g,
-      block,
-    );
-    writeFileSync(full, replaced === existing ? existing + '\n' + block : replaced, 'utf8');
+    if (existsSync(full)) {
+      const existing = readFileSync(full, 'utf8');
+      const replaced = existing.replace(
+        /<!-- triage-ai:start -->[\s\S]*?<!-- triage-ai:end -->\n?/g,
+        block,
+      );
+      writeFileSync(full, replaced === existing ? existing + '\n' + block : replaced, 'utf8');
+    } else {
+      // Create new memory file
+      writeFileSync(full, block, 'utf8');
+    }
+    written++;
   }
 
-  console.log(`Saved ${Math.min(allFindings.length, 20)} findings to AI memory files.`);
+  console.log(`Saved ${Math.min(allFindings.length, 20)} findings to ${written} AI memory files.`);
 }
 
 // ---------------------------------------------------------------------------

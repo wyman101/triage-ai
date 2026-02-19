@@ -263,7 +263,7 @@ function writeMemory(merged, prompt) {
 function createServer() {
     const server = new McpServer({
         name: 'triage-ai',
-        version: '1.0.4',
+        version: '1.0.6',
     });
     // -------------------------------------------------------------------------
     // Tool: triage

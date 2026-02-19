@@ -12,9 +12,7 @@ export declare class ClaudeModel extends SubprocessModel {
     /**
      * Build Claude CLI command.
      *
-     * Default: --permission-mode plan — full codebase exploration (read files,
-     * search, grep) while preventing any writes.
-     * Context-only: plain -p mode — no tool use, analyses only the provided context.
+     * Uses -p (print) mode for non-interactive pipe operation.
      * CLAUDECODE env var is unset so Claude can run from within Claude Code sessions.
      */
     _buildCommand(_promptFile: string): {

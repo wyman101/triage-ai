@@ -330,9 +330,22 @@ export abstract class SubprocessModel extends BaseModel {
       proc.stdout?.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
       proc.stderr?.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
 
+      // Wait for the process to be fully spawned before writing to stdin.
+      // Without this, stdin data can be lost in a race condition.
+      await new Promise<void>((resolve, reject) => {
+        proc!.on('spawn', () => resolve());
+        proc!.on('error', (err) => reject(err));
+      });
+
       // Send prompt via stdin then close
-      proc.stdin?.write(prompt, 'utf8');
-      proc.stdin?.end();
+      await new Promise<void>((resolve, reject) => {
+        proc!.stdin!.write(prompt, 'utf8', (err) => {
+          if (err) reject(err);
+          else {
+            proc!.stdin!.end(resolve);
+          }
+        });
+      });
 
       // Wait for exit
       const exitCode = await new Promise<number | null>((resolve, reject) => {

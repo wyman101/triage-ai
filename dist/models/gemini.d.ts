@@ -12,9 +12,7 @@ export declare class GeminiModel extends SubprocessModel {
     /**
      * Build Gemini CLI command.
      *
-     * Default: --approval-mode plan — full codebase exploration (read files,
-     * search) while preventing any writes.
-     * Context-only: plain -p mode — no tool use, analyses only the provided context.
+     * Uses -p mode for non-interactive pipe operation.
      * Model selection via TRIAGE_GEMINI_MODEL env var (optional).
      */
     _buildCommand(_promptFile: string): {
