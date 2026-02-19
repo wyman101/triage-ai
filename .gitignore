@@ -1,0 +1,25 @@
+node_modules/
+*.tsbuildinfo
+triage_results/
+*.log
+.DS_Store
+Thumbs.db
+
+# Python legacy (safe to keep)
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+*.egg
+.eggs/
+*.so
+.venv/
+venv/
+env/
+.env
+.tox/
+.pytest_cache/
+.coverage
+htmlcov/
+error_log

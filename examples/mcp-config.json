@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "triage": {
+      "command": "triage-ai",
+      "args": ["--mcp"],
+      "env": {}
+    }
+  }
+}
