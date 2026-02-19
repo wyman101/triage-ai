@@ -14,7 +14,7 @@ import type { ProgressPhase, PhaseItem } from './types.js';
 // Version — kept in sync with package.json at runtime
 // ---------------------------------------------------------------------------
 
-const VERSION = '1.0.6';
+const VERSION = '1.0.7';
 
 // ---------------------------------------------------------------------------
 // Box-drawing helpers

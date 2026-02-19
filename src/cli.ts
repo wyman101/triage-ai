@@ -28,7 +28,7 @@ import { BaseModel } from './models/base.js';
 // Version (aligned with package.json)
 // ---------------------------------------------------------------------------
 
-const VERSION = '1.0.6';
+const VERSION = '1.0.7';
 
 // ---------------------------------------------------------------------------
 // Config path

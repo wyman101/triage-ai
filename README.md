@@ -23,7 +23,7 @@ You need at least one AI CLI installed. Three catch what one misses.
 
 - **Security audits** — SQL injection, XSS, command injection, auth bypass, hardcoded secrets
 - **Bug detection** — logic errors, race conditions, null references, missing error handling
-- **Code review** — validates AI-generated code, reviews PRs, checks plans before implementation
+- **Second-opinion on AI plans** — before implementing what Claude/Gemini/Copilot proposed, get independent multi-model review
 - **Architecture analysis** — agents explore the full codebase to understand context, not just individual files
 - **Consensus scoring** — when multiple models independently flag the same issue, confidence is high
 - **Conflict detection** — when models disagree on severity, you get both perspectives
@@ -32,13 +32,13 @@ You need at least one AI CLI installed. Three catch what one misses.
 
 ## Safety Model
 
-Each AI CLI runs in **read-only exploration mode** with write protection:
+Each AI CLI runs in **non-interactive pipe mode** — they can read and explore your codebase but cannot modify it:
 
-| CLI | Mode | Can Do | Cannot Do |
-|-----|------|--------|-----------|
-| Claude Code | `--permission-mode plan` | Read files, search, grep, explore | Write, edit, delete, run commands |
-| Gemini CLI | `--approval-mode plan` | Read files, search, explore | Write, edit, delete, run commands |
-| OpenAI Codex | `--sandbox read-only` | Read files, search, explore | Write, edit, delete, run commands |
+| CLI | Mode | What Happens |
+|-----|------|-------------|
+| Claude Code | `-p` (print mode) | Reads files, searches, analyzes — no interactive writes |
+| Gemini CLI | `-p` (print mode) | Reads files, searches, analyzes — no interactive writes |
+| OpenAI Codex | `--sandbox read-only` | Full auto-approve in a read-only sandbox — cannot write |
 
 Secrets (API keys, passwords, private keys, AWS credentials) are redacted from any context sent to the models. Sensitive files (`.env`, credentials, binaries) are excluded automatically.
 
@@ -65,29 +65,45 @@ cd your-project
 # Full 3-model review
 triage-ai "find bugs and security issues"
 
-# Single model
+# Single model, quick check
 triage-ai --models claude "quick security scan"
 
 # Review only uncommitted changes
 triage-ai --diff-only "check my changes for bugs"
 
-# Validate AI-generated code before implementing
-triage-ai --diff-only "an AI generated these changes — review for correctness and security"
-
-# Save report to file
-triage-ai --out report.md "full security audit"
+# Save report + remember findings
+triage-ai --remember --out report.md "full security audit"
 
 # Preview patches without applying
 triage-ai --dry-run "fix the SQL injection"
-
-# Save findings to AI memory files
-triage-ai --remember "pre-launch security audit"
 ```
+
+### Second-opinion on AI plans
+
+A standout use case: get a multi-model review of plans proposed by an AI before you implement them.
+
+When Claude, Gemini, Copilot or any AI coding assistant proposes a plan — a refactor, a new feature, an architecture change — run triage to get independent second opinions before committing to it:
+
+```bash
+# After Claude proposes changes in plan mode
+triage-ai "Claude proposed the following plan — review it for correctness, \
+  security risks, edge cases and anything it might have missed: \
+  [paste or describe the plan]"
+
+# Review AI-generated code that's been staged
+triage-ai --diff-only "an AI generated these changes — review for bugs and security"
+
+# Validate a migration plan
+triage-ai "Review this database migration plan for data loss risks, \
+  missing rollback steps and performance issues"
+```
+
+Each model independently evaluates the plan against your actual codebase — exploring files, checking assumptions, and flagging issues the proposing AI may have overlooked. Consensus findings (flagged by 2+ models) are especially worth paying attention to.
 
 ## Example Output
 
 ```
-┌ triage-ai v1.0.6
+┌ triage-ai v1.0.7
 │
 ├ Intake
 │  ✓ Scanned repository          42 files, 3 modified
