@@ -366,13 +366,9 @@ export abstract class SubprocessModel extends BaseModel {
         throw new Error(`Model failed: ${errMsg}`);
       }
 
-      // Even on success, warn about auth hints buried in stderr
-      if (stderr) {
-        const authErr = detectAuthError(this.name, stderr);
-        if (authErr) {
-          throw new Error(authErr);
-        }
-      }
+      // On success (exit 0), don't check stderr for auth patterns.
+      // Codex echoes the full prompt+response to stderr, so patterns like
+      // "API key" in the prompt text itself would cause false positives.
 
       return stdout;
     } catch (err: unknown) {
