@@ -2,12 +2,11 @@
  * Codex model adapter.
  *
  * Uses the Codex CLI for analysis.
- * Prompt is read from the temp file and passed as a positional argument —
- * no shell expansion, no bash -c.
+ * Prompt is passed via stdin using `-` as the prompt argument to avoid
+ * E2BIG errors when the context is large (>128KB).
  *
  * Ported from triage_cli/models/codex.py
  */
-import { readFileSync } from 'node:fs';
 import { SubprocessModel } from './base.js';
 export class CodexModel extends SubprocessModel {
     constructor() {
@@ -20,12 +19,11 @@ export class CodexModel extends SubprocessModel {
      * Build Codex CLI command.
      *
      * Uses --full-auto --sandbox read-only for non-interactive read-only operation.
-     * We read the prompt file synchronously and pass the text directly —
-     * no shell expansion, no bash -c.
+     * Prompt is read from stdin (base class writes it); `-` tells codex to read
+     * the prompt from stdin instead of expecting a positional argument.
      */
-    _buildCommand(promptFile) {
-        const promptText = readFileSync(promptFile, 'utf8');
-        const cmd = ['codex', 'exec', '--full-auto', '--sandbox', 'read-only', '--skip-git-repo-check', promptText];
+    _buildCommand(_promptFile) {
+        const cmd = ['codex', 'exec', '--full-auto', '--sandbox', 'read-only', '--skip-git-repo-check', '-'];
         return {
             cmd,
             env: {},
