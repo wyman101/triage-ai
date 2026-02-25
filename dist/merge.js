@@ -48,6 +48,7 @@ export class MergeEngine {
                 needs_auth: result.needs_auth,
                 version: result.version,
                 context_truncated: result.context_truncated,
+                output_truncated: result.output_truncated,
                 parsed_as: result.parsed_as,
             });
             for (const finding of result.findings) {

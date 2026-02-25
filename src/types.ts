@@ -73,6 +73,8 @@ export interface ModelResult {
   parsed_as?: 'json' | 'plain_text';
   version?: string | null;
   context_truncated?: boolean;
+  /** True when model output appears to have been truncated (incomplete JSON). */
+  output_truncated?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,6 +102,7 @@ export interface ModelRunSummary {
   needs_auth?: boolean;
   version?: string | null;
   context_truncated?: boolean;
+  output_truncated?: boolean;
   parsed_as?: 'json' | 'plain_text';
 }
 
@@ -494,4 +497,7 @@ Your entire response must be a single JSON object matching this schema exactly:
 }}
 \`\`\`
 
-CRITICAL: Output ONLY the JSON object. Do NOT wrap it in markdown code fences. Do NOT include any text before or after the JSON. Start your response with {{ and end with }}.`;
+CRITICAL: Output ONLY the JSON object. Do NOT wrap it in markdown code fences. Do NOT include any text before or after the JSON. Start your response with {{ and end with }}.
+
+OUTPUT COMPLETENESS:
+Your ENTIRE response MUST be valid, parseable JSON. If you are approaching your output limit, REDUCE the number of findings (drop S3/S2 first) rather than truncating mid-JSON. Always close all JSON brackets and braces. An incomplete JSON response is WORSE than a shorter complete one. Prioritize S0 and S1 findings if space is limited.`;

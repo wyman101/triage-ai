@@ -212,7 +212,45 @@ export abstract class BaseModel {
       }
     }
 
-    // Strategy 5: treat the entire output as a plain-text summary
+    // Strategy 5: detect truncated JSON — output contains { but no matching }
+    // This distinguishes "model tried JSON but was truncated" from "model chose prose".
+    if (firstBrace !== -1 && (lastBrace === -1 || lastBrace <= firstBrace)) {
+      // Has opening brace but no closing — clearly truncated
+      const partial = trimmed.slice(firstBrace, firstBrace + 500);
+      return {
+        model: this.name,
+        summary: `Model output was truncated (incomplete JSON). Partial: ${partial.slice(0, 200)}...`,
+        findings: [],
+        inspected: [],
+        questions: [],
+        error: 'Model output was truncated — JSON is incomplete. Try reducing context size or increasing timeout.',
+        raw_output: output,
+        output_truncated: true,
+      };
+    }
+
+    // Strategy 6: check for truncated JSON that has braces but is still invalid
+    // (e.g., "findings" array cut off mid-element)
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const candidate = trimmed.slice(firstBrace);
+      const openBraces = (candidate.match(/\{/g) || []).length;
+      const closeBraces = (candidate.match(/\}/g) || []).length;
+      if (openBraces > closeBraces + 1) {
+        // Significantly more opens than closes — likely truncated
+        return {
+          model: this.name,
+          summary: `Model output appears truncated (${openBraces} opening braces, ${closeBraces} closing)`,
+          findings: [],
+          inspected: [],
+          questions: [],
+          error: 'Model output was truncated — JSON has unmatched braces. Try reducing context size or increasing timeout.',
+          raw_output: output,
+          output_truncated: true,
+        };
+      }
+    }
+
+    // Strategy 7: treat the entire output as a plain-text summary
     // This prevents 0-finding "parse error" results when a model returns
     // useful analysis in prose form instead of JSON.
     const summary = trimmed.slice(0, 500);
@@ -352,6 +390,12 @@ export abstract class SubprocessModel extends BaseModel {
       const stderr = Buffer.concat(stderrChunks).toString('utf8');
 
       if (exitCode !== 0) {
+        // Exit code 124 = timeout command killed the process.
+        // Salvage whatever stdout was captured — partial results are better than none.
+        if (exitCode === 124 && stdout.length > 0) {
+          return `${stdout}\n\n[triage: output may be incomplete — process was killed after ${timeout}s timeout]`;
+        }
+
         // Check for auth errors first — gives a clearer message than a raw dump
         const authErr = detectAuthError(this.name, stderr);
         if (authErr) {

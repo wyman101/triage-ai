@@ -260,5 +260,8 @@ Your entire response must be a single JSON object matching this schema exactly:
 }}
 \`\`\`
 
-CRITICAL: Output ONLY the JSON object. Do NOT wrap it in markdown code fences. Do NOT include any text before or after the JSON. Start your response with {{ and end with }}.`;
+CRITICAL: Output ONLY the JSON object. Do NOT wrap it in markdown code fences. Do NOT include any text before or after the JSON. Start your response with {{ and end with }}.
+
+OUTPUT COMPLETENESS:
+Your ENTIRE response MUST be valid, parseable JSON. If you are approaching your output limit, REDUCE the number of findings (drop S3/S2 first) rather than truncating mid-JSON. Always close all JSON brackets and braces. An incomplete JSON response is WORSE than a shorter complete one. Prioritize S0 and S1 findings if space is limited.`;
 //# sourceMappingURL=types.js.map

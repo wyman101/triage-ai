@@ -854,12 +854,20 @@ async function main(): Promise<void> {
   }
 
   // Warn about context truncation — list which models were affected
-  const truncatedModels = successResults.filter((r) => r.context_truncated);
-  if (truncatedModels.length > 0) {
-    const names = truncatedModels.map((r) => r.model).join(', ');
+  const ctxTruncatedModels = successResults.filter((r) => r.context_truncated);
+  if (ctxTruncatedModels.length > 0) {
     progress.addItem('Context truncation');
     progress.updateItem('Context truncation', 'skipped',
-      `some files/diffs were truncated — analysis may be incomplete`);
+      `input context was truncated — analysis may be incomplete`);
+  }
+
+  // Warn about output truncation — model hit its output token limit
+  const outTruncatedModels = successResults.filter((r) => r.output_truncated);
+  if (outTruncatedModels.length > 0) {
+    const names = outTruncatedModels.map((r) => r.model).join(', ');
+    progress.addItem('Output truncation');
+    progress.updateItem('Output truncation', 'skipped',
+      `output was truncated for ${names} — some findings may be missing`);
   }
 
   if (successResults.length === 0) {
@@ -1003,7 +1011,7 @@ async function main(): Promise<void> {
   const totalSec = (Date.now() - startTime) / 1000;
 
   // Build model status summary for non-TTY display
-  const anyTruncated = successResults.some((r) => r.context_truncated);
+  const anyTruncated = successResults.some((r) => r.context_truncated || r.output_truncated);
   const modelStatuses = successResults.map((r) => ({
     name: r.model,
     status: 'done',

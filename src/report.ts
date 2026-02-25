@@ -77,11 +77,17 @@ export class ReportGenerator {
       }
       lines.push('');
 
-      // Truncation warning
-      const truncated = merged.model_runs.filter((r) => r.context_truncated);
-      if (truncated.length > 0) {
-        const names = truncated.map((r) => r.model).join(', ');
-        lines.push(`> **Warning:** Context was truncated for ${names} — analysis may be incomplete for large files.`);
+      // Truncation warnings
+      const ctxTruncated = merged.model_runs.filter((r) => r.context_truncated);
+      if (ctxTruncated.length > 0) {
+        const names = ctxTruncated.map((r) => r.model).join(', ');
+        lines.push(`> **Warning:** Input context was truncated for ${names} — analysis may be incomplete for large files.`);
+        lines.push('');
+      }
+      const outTruncated = merged.model_runs.filter((r) => r.output_truncated);
+      if (outTruncated.length > 0) {
+        const names = outTruncated.map((r) => r.model).join(', ');
+        lines.push(`> **Warning:** Output was truncated for ${names} — some findings may be missing. Try reducing context size or increasing timeout.`);
         lines.push('');
       }
     }

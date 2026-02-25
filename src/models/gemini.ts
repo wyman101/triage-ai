@@ -28,7 +28,7 @@ export class GeminiModel extends SubprocessModel {
     env: Record<string, string | undefined>;
   } {
     const model = process.env['TRIAGE_GEMINI_MODEL'] ?? '';
-    const cmd = [...this.command, '-p', ''];
+    const cmd = [...this.command, '-p'];
     if (model) {
       cmd.push('-m', model);
     }

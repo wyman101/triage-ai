@@ -1,6 +1,6 @@
 {
   "name": "triage-ai",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Multi-model code triage — run Claude, Gemini and Codex in parallel to analyze your codebase and merge their findings",
   "type": "module",
   "main": "dist/cli.js",
