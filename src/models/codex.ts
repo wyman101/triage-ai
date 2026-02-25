@@ -21,7 +21,8 @@ export class CodexModel extends SubprocessModel {
   /**
    * Build Codex CLI command.
    *
-   * Uses --full-auto --sandbox read-only for non-interactive read-only operation.
+   * Uses --full-auto for non-interactive operation.
+   * No sandbox restriction — Codex can explore the filesystem freely.
    * Prompt is read from stdin (base class writes it); `-` tells codex to read
    * the prompt from stdin instead of expecting a positional argument.
    */
@@ -29,7 +30,7 @@ export class CodexModel extends SubprocessModel {
     cmd: string[];
     env: Record<string, string | undefined>;
   } {
-    const cmd = [...this.command, 'exec', '--full-auto', '--sandbox', 'read-only', '--skip-git-repo-check', '-'];
+    const cmd = [...this.command, 'exec', '--full-auto', '--skip-git-repo-check', '-'];
     return {
       cmd,
       env: {},

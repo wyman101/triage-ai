@@ -315,17 +315,33 @@ export class SubprocessModel extends BaseModel {
             stderrChunks = [];
             proc.stdout?.on('data', (chunk) => stdoutChunks.push(chunk));
             proc.stderr?.on('data', (chunk) => stderrChunks.push(chunk));
+            // Absorb EPIPE errors on stdin — if the subprocess exits before we
+            // finish writing, the pipe breaks.  Without this listener the error
+            // is emitted as an unhandled event and crashes the whole process.
+            let stdinError = null;
+            proc.stdin.on('error', (err) => { stdinError = err; });
             // Wait for the process to be fully spawned before writing to stdin.
             // Without this, stdin data can be lost in a race condition.
             await new Promise((resolve, reject) => {
                 proc.on('spawn', () => resolve());
                 proc.on('error', (err) => reject(err));
             });
-            // Send prompt via stdin then close
+            // Send prompt via stdin then close.
+            // If the subprocess already exited, the write will fail with EPIPE —
+            // we catch that via the callback AND the 'error' event listener above.
             await new Promise((resolve, reject) => {
                 proc.stdin.write(prompt, 'utf8', (err) => {
-                    if (err)
-                        reject(err);
+                    if (err) {
+                        // EPIPE means subprocess exited — not fatal, we'll handle it
+                        // when we check the exit code below.
+                        if (err.code === 'EPIPE') {
+                            proc.stdin.end();
+                            resolve();
+                        }
+                        else {
+                            reject(err);
+                        }
+                    }
                     else {
                         proc.stdin.end(resolve);
                     }

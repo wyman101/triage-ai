@@ -13,7 +13,8 @@ export declare class CodexModel extends SubprocessModel {
     /**
      * Build Codex CLI command.
      *
-     * Uses --full-auto --sandbox read-only for non-interactive read-only operation.
+     * Uses --full-auto for non-interactive operation.
+     * No sandbox restriction — Codex can explore the filesystem freely.
      * Prompt is read from stdin (base class writes it); `-` tells codex to read
      * the prompt from stdin instead of expecting a positional argument.
      */
