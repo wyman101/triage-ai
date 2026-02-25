@@ -27,7 +27,7 @@ export class ClaudeModel extends SubprocessModel {
     cmd: string[];
     env: Record<string, string | undefined>;
   } {
-    const cmd = ['claude', '-p', '--output-format', 'text'];
+    const cmd = [...this.command, '-p', '--output-format', 'text'];
     return {
       cmd,
       env: { CLAUDECODE: undefined }, // Unset to allow nested sessions

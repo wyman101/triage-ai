@@ -32,6 +32,8 @@ export interface InspectedFile {
     path: string;
     reason: string;
 }
+export type ModelStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'skipped';
+export type FailureKind = 'auth' | 'rate_limit' | 'timeout' | 'parse' | 'crash' | 'unknown';
 export interface ModelResult {
     model: string;
     summary: string;
@@ -40,6 +42,15 @@ export interface ModelResult {
     questions: string[];
     error?: string;
     raw_output: string;
+    /** Structured run metadata — populated by cli.ts after analyze() returns. */
+    status?: ModelStatus;
+    elapsed_ms?: number;
+    exit_code?: number | null;
+    failure_kind?: FailureKind;
+    needs_auth?: boolean;
+    parsed_as?: 'json' | 'plain_text';
+    version?: string | null;
+    context_truncated?: boolean;
 }
 export interface FindingCluster {
     findings: Finding[];
@@ -125,6 +136,15 @@ export interface TriageToolInput {
     timeout?: number;
     remember?: boolean;
 }
+/** Patterns in stderr/error messages that indicate a CLI auth/quota problem. */
+export declare const AUTH_ERROR_PATTERNS: RegExp[];
+/**
+ * Check an error/stderr string for known auth/quota patterns.
+ * Returns a human-readable hint if found, null otherwise.
+ */
+export declare function detectAuthError(modelName: string, text: string): string | null;
+/** Produce a model-specific auth/rate-limit hint. */
+export declare function authHint(modelName: string, errorMsg: string): string;
 /** Severity ordering for comparisons (lower = more severe). */
 export declare const SEVERITY_ORDER: Record<Severity, number>;
 /** Validate that a string is a known severity. */

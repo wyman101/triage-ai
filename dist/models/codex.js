@@ -23,7 +23,7 @@ export class CodexModel extends SubprocessModel {
      * the prompt from stdin instead of expecting a positional argument.
      */
     _buildCommand(_promptFile) {
-        const cmd = ['codex', 'exec', '--full-auto', '--sandbox', 'read-only', '--skip-git-repo-check', '-'];
+        const cmd = [...this.command, 'exec', '--full-auto', '--sandbox', 'read-only', '--skip-git-repo-check', '-'];
         return {
             cmd,
             env: {},

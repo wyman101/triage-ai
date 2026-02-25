@@ -9,12 +9,14 @@
 import chalk, { type ChalkInstance } from 'chalk';
 import ora, { type Ora } from 'ora';
 import type { ProgressPhase, PhaseItem } from './types.js';
+import { createRequire } from 'node:module';
 
 // ---------------------------------------------------------------------------
-// Version — kept in sync with package.json at runtime
+// Version — read from package.json so it stays in sync automatically
 // ---------------------------------------------------------------------------
 
-const VERSION = '1.0.7';
+const _require = createRequire(import.meta.url);
+const VERSION: string = (_require('../package.json') as { version: string }).version;
 
 // ---------------------------------------------------------------------------
 // Box-drawing helpers
@@ -54,6 +56,8 @@ function phaseColour(phase: ProgressPhase): ChalkInstance {
 
 interface TrackedItem extends PhaseItem {
   spinner: Ora | null;
+  _timer?: ReturnType<typeof setInterval>;
+  _startTime?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +148,7 @@ export class TriageProgress {
    * Start an ora spinner for the given item.  The spinner persists until
    * `stopSpinner` is called.
    */
-  startSpinner(label: string, detail?: string): void {
+  startSpinner(label: string, detail?: string, timeoutSec?: number): void {
     if (!this.items.has(label)) {
       const item: TrackedItem = { label, status: 'running', detail, spinner: null };
       this.items.set(label, item);
@@ -152,6 +156,7 @@ export class TriageProgress {
 
     const item = this.items.get(label)!;
     item.status = 'running';
+    item._startTime = Date.now();
     if (detail !== undefined) item.detail = detail;
 
     if (this.isTTY) {
@@ -162,8 +167,28 @@ export class TriageProgress {
       });
       spinner.start();
       item.spinner = spinner;
+
+      // Update spinner with elapsed time every 15s
+      item._timer = setInterval(() => {
+        const elapsed = Math.round((Date.now() - item._startTime!) / 1000);
+        const warnStr = timeoutSec && elapsed > timeoutSec * 0.8
+          ? ' ⚠ approaching timeout' : '';
+        const baseDetail = detail ?? 'running';
+        item.detail = `${baseDetail} ${elapsed}s${warnStr}`;
+        if (item.spinner) {
+          item.spinner.text = this._itemText(item);
+        }
+      }, 15_000);
     } else {
       process.stdout.write(`[${this._phaseName()}] ${label}…\n`);
+
+      // Periodic status for non-TTY (CI / AI orchestrators)
+      item._timer = setInterval(() => {
+        const elapsed = Math.round((Date.now() - item._startTime!) / 1000);
+        const warnStr = timeoutSec && elapsed > timeoutSec * 0.8
+          ? ' (approaching timeout)' : '';
+        process.stdout.write(`[${this._phaseName()}] ${label}… ${elapsed}s${warnStr}\n`);
+      }, 30_000);
     }
   }
 
@@ -173,6 +198,12 @@ export class TriageProgress {
   stopSpinner(label: string, status: 'done' | 'failed', detail?: string): void {
     const item = this.items.get(label);
     if (!item) return;
+
+    // Clear elapsed timer
+    if (item._timer) {
+      clearInterval(item._timer);
+      item._timer = undefined;
+    }
 
     item.status = status;
     if (detail !== undefined) item.detail = detail;
@@ -287,6 +318,10 @@ export class TriageProgress {
 
   private _stopAllSpinners(): void {
     for (const item of this.items.values()) {
+      if (item._timer) {
+        clearInterval(item._timer);
+        item._timer = undefined;
+      }
       if (item.spinner) {
         item.spinner.stop();
         item.spinner = null;

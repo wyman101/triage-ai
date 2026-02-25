@@ -14,46 +14,8 @@ import {
   type ScanContext,
   MODEL_PROMPT_TEMPLATE,
   modelResultFromDict,
+  detectAuthError,
 } from '../types.js';
-
-// ---------------------------------------------------------------------------
-// Auth / rate-limit error detection
-// ---------------------------------------------------------------------------
-
-/** Patterns in stderr that indicate a CLI auth/quota problem. */
-const AUTH_ERROR_PATTERNS: RegExp[] = [
-  /not logged in/i,
-  /login required/i,
-  /please log in/i,
-  /authentication (failed|required|error)/i,
-  /unauthorized/i,
-  /api[_\s-]?key/i,
-  /invalid[_\s-]?key/i,
-  /missing[_\s-]?key/i,
-  /no credentials/i,
-  /rate[_\s-]?limit/i,
-  /quota exceeded/i,
-  /too many requests/i,
-  /billing/i,
-  /subscription required/i,
-];
-
-/**
- * Check collected stderr text for known auth/quota errors.
- * Returns a human-readable error message if found, null otherwise.
- */
-function detectAuthError(modelName: string, stderr: string): string | null {
-  for (const pattern of AUTH_ERROR_PATTERNS) {
-    if (pattern.test(stderr)) {
-      return (
-        `${modelName} CLI authentication/quota error — ` +
-        `please run \`${modelName}\` interactively to log in or check your API key.\n` +
-        `Stderr: ${stderr.slice(0, 500)}`
-      );
-    }
-  }
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // Abstract base
@@ -129,11 +91,17 @@ export abstract class BaseModel {
     }
   }
 
+  /** Track whether context was truncated during prompt building. */
+  lastBuildTruncated = false;
+
   /** Build the full prompt string from the template and scan context. */
   buildPrompt(prompt: string, context: ScanContext): string {
+    let truncated = false;
+
     // Tree context (directory structure), truncated at 3000 chars
     let treeContext = '';
     if (context.tree) {
+      if (context.tree.length > 3000) truncated = true;
       treeContext = `Directory Structure:\n\`\`\`\n${context.tree.slice(0, 3000)}\n\`\`\`\n`;
     }
 
@@ -143,7 +111,7 @@ export abstract class BaseModel {
       gitContext += `Recent Commits:\n\`\`\`\n${context.git_log}\n\`\`\`\n`;
     }
     if (context.has_diff) {
-      // Truncate git_diff at 10000 chars
+      if (context.git_diff.length > 10000) truncated = true;
       gitContext += `Git Diff:\n\`\`\`\n${context.git_diff.slice(0, 10000)}\n\`\`\`\n`;
     }
     if (context.git_status) {
@@ -159,10 +127,13 @@ export abstract class BaseModel {
       let content = f.content;
       if (content.length > 5000) {
         content = content.slice(0, 5000) + '\n... [truncated]';
+        truncated = true;
       }
       filesContext += `\`\`\`\n${content}\n\`\`\`\n`;
       totalChars += content.length;
     }
+
+    this.lastBuildTruncated = truncated;
 
     const fileCount = context.files.length;
 

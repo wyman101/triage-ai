@@ -31,7 +31,7 @@ export declare class TriageProgress {
      * Start an ora spinner for the given item.  The spinner persists until
      * `stopSpinner` is called.
      */
-    startSpinner(label: string, detail?: string): void;
+    startSpinner(label: string, detail?: string, timeoutSec?: number): void;
     /**
      * Stop a running spinner and mark the item done or failed.
      */

@@ -21,6 +21,9 @@ import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
+const MCP_VERSION = _require('../package.json').version;
 import { RepoScanner } from './scanner.js';
 import { MergeEngine, mergedResultToDict } from './merge.js';
 // ---------------------------------------------------------------------------
@@ -263,7 +266,7 @@ function writeMemory(merged, prompt) {
 function createServer() {
     const server = new McpServer({
         name: 'triage-ai',
-        version: '1.0.7',
+        version: MCP_VERSION,
     });
     // -------------------------------------------------------------------------
     // Tool: triage

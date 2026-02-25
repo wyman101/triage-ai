@@ -29,7 +29,7 @@ export class CodexModel extends SubprocessModel {
     cmd: string[];
     env: Record<string, string | undefined>;
   } {
-    const cmd = ['codex', 'exec', '--full-auto', '--sandbox', 'read-only', '--skip-git-repo-check', '-'];
+    const cmd = [...this.command, 'exec', '--full-auto', '--sandbox', 'read-only', '--skip-git-repo-check', '-'];
     return {
       cmd,
       env: {},

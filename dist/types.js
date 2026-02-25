@@ -4,6 +4,64 @@
  * All modules code against these interfaces — this is the contract.
  */
 // ---------------------------------------------------------------------------
+// Auth / rate-limit error detection (shared across cli.ts and base.ts)
+// ---------------------------------------------------------------------------
+/** Patterns in stderr/error messages that indicate a CLI auth/quota problem. */
+export const AUTH_ERROR_PATTERNS = [
+    /not logged in/i,
+    /login required/i,
+    /please log in/i,
+    /authentication (failed|required|error)/i,
+    /authenticate/i,
+    /unauthorized/i,
+    /forbidden/i,
+    /api[_\s-]?key/i,
+    /ANTHROPIC_API_KEY/,
+    /GOOGLE_API_KEY/,
+    /OPENAI_API_KEY/,
+    /invalid[_\s-]?key/i,
+    /missing[_\s-]?key/i,
+    /no credentials/i,
+    /rate[_\s-]?limit/i,
+    /quota exceeded/i,
+    /too many requests/i,
+    /429/,
+    /403/,
+    /billing/i,
+    /subscription required/i,
+];
+/**
+ * Check an error/stderr string for known auth/quota patterns.
+ * Returns a human-readable hint if found, null otherwise.
+ */
+export function detectAuthError(modelName, text) {
+    for (const pattern of AUTH_ERROR_PATTERNS) {
+        if (pattern.test(text)) {
+            return authHint(modelName, text);
+        }
+    }
+    return null;
+}
+/** Produce a model-specific auth/rate-limit hint. */
+export function authHint(modelName, errorMsg) {
+    const lower = errorMsg.toLowerCase();
+    const name = modelName.toLowerCase();
+    if (/rate.?limit|too many|429|quota/.test(lower)) {
+        const others = ['claude', 'gemini', 'codex'].filter((m) => m !== name).join(',');
+        return `rate limited — try again later or use --models ${others}`;
+    }
+    if (/unauthorized|forbidden|403/.test(lower)) {
+        return `access denied — check your API key or permissions`;
+    }
+    if (name === 'claude')
+        return 'not authenticated — run: claude auth login';
+    if (name === 'gemini')
+        return 'not authenticated — run: gemini auth login';
+    if (name === 'codex')
+        return 'not authenticated — run: codex (or set OPENAI_API_KEY)';
+    return 'not authenticated — check API key or run the CLI interactively to log in';
+}
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 /** Severity ordering for comparisons (lower = more severe). */

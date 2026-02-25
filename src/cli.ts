@@ -20,9 +20,11 @@ import which from 'which';
 import { TriageProgress, plainTeamLine, plainReportLine } from './progress.js';
 import { RepoScanner } from './scanner.js';
 import { MergeEngine, mergedResultToDict } from './merge.js';
-import type { CliTool, MergedResult, ModelResult, ScanContext } from './types.js';
+import type { CliTool, MergedResult, ModelResult, ScanContext, FailureKind } from './types.js';
+import { detectAuthError, authHint } from './types.js';
 import { startMcpServer } from './mcp-server.js';
 import { BaseModel } from './models/base.js';
+import { spawnSync } from 'node:child_process';
 
 // ---------------------------------------------------------------------------
 // Version — read from package.json so it stays in sync automatically
@@ -39,53 +41,8 @@ const VERSION: string = (_require('../package.json') as { version: string }).ver
 const CONFIG_DIR = join(homedir(), '.config', 'triage-ai');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
-// ---------------------------------------------------------------------------
-// Auth / rate-limit error patterns (mirrors base.ts)
-// ---------------------------------------------------------------------------
-
-const AUTH_PATTERNS: RegExp[] = [
-  /not logged in/i,
-  /login required/i,
-  /authenticate/i,
-  /api[_\s-]?key/i,
-  /ANTHROPIC_API_KEY/,
-  /GOOGLE_API_KEY/,
-  /OPENAI_API_KEY/,
-  /rate[_\s-]?limit/i,
-  /quota exceeded/i,
-  /too many requests/i,
-  /429/,
-  /unauthorized/i,
-  /forbidden/i,
-  /403/,
-];
-
-function detectAuthIssue(modelName: string, errorMsg: string): string | null {
-  for (const pat of AUTH_PATTERNS) {
-    if (pat.test(errorMsg)) {
-      return _authHint(modelName, errorMsg);
-    }
-  }
-  return null;
-}
-
-function _authHint(modelName: string, errorMsg: string): string {
-  const lower = errorMsg.toLowerCase();
-  const name = modelName.toLowerCase();
-
-  if (/rate.?limit|too many|429|quota/.test(lower)) {
-    const others = ['claude', 'gemini', 'codex'].filter((m) => m !== name).join(',');
-    return `rate limited — try again later or use --models ${others}`;
-  }
-  if (/unauthorized|forbidden|403/.test(lower)) {
-    return `access denied — check your API key or permissions`;
-  }
-
-  if (name === 'claude') return 'not authenticated — run: claude auth login';
-  if (name === 'gemini') return 'not authenticated — run: gemini auth login';
-  if (name === 'codex')  return 'not authenticated — run: codex (or set OPENAI_API_KEY)';
-  return 'not authenticated — check API key or run the CLI interactively to log in';
-}
+// Auth helpers — use shared implementation from types.ts
+// detectAuthError and authHint are imported above
 
 // ---------------------------------------------------------------------------
 // CLI tool detection
@@ -132,6 +89,60 @@ async function detectTools(requested: string[]): Promise<CliTool[]> {
   }
 
   return tools;
+}
+
+// ---------------------------------------------------------------------------
+// Version detection for CLI tools
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the version string of an installed CLI tool.
+ * Returns null if the version cannot be determined.
+ */
+function getCliVersion(command: string): string | null {
+  try {
+    const result = spawnSync(command, ['--version'], {
+      timeout: 5000,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    const output = (result.stdout ?? '') + (result.stderr ?? '');
+    const match = output.match(/(\d+\.\d+\.\d+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if triage-ai itself has an update available on npm.
+ * Returns the latest version string or null if check fails.
+ */
+async function checkForUpdates(): Promise<string | null> {
+  try {
+    const result = spawnSync('npm', ['view', 'triage-ai', 'version'], {
+      timeout: 5000,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    const latest = result.stdout?.trim();
+    if (latest && latest !== VERSION) return latest;
+  } catch { /* offline or registry unavailable */ }
+  return null;
+}
+
+/**
+ * Classify a failure error message into a FailureKind.
+ */
+function classifyFailure(errorMsg: string): FailureKind {
+  const lower = errorMsg.toLowerCase();
+  if (detectAuthError('_', errorMsg)) {
+    if (/rate.?limit|too many|429|quota/.test(lower)) return 'rate_limit';
+    return 'auth';
+  }
+  if (/timeout|timed out|exit code (124|137)/.test(lower)) return 'timeout';
+  if (/plain text instead of json/i.test(lower)) return 'parse';
+  return 'unknown';
 }
 
 // ---------------------------------------------------------------------------
@@ -267,13 +278,22 @@ async function runReady(modelFilter?: string): Promise<void> {
 
   console.log(`\ntriage-ai v${VERSION} — ready check\n`);
 
-  // 1. Detect CLIs
+  // Check for triage-ai updates
+  const latestVersion = await checkForUpdates();
+  if (latestVersion) {
+    console.log(chalk.yellow(`  ⬆ Update available: ${VERSION} → ${latestVersion}`) +
+      chalk.dim(` (npm update -g triage-ai)\n`));
+  }
+
+  // 1. Detect CLIs with version info
   const tools = await detectTools(requestedModels);
   const available: CliTool[] = [];
 
   for (const t of tools) {
     if (t.available) {
-      console.log(chalk.green(`  ✓ ${t.name}`) + ` found at ${t.path}`);
+      const ver = getCliVersion(t.command);
+      const verStr = ver ? chalk.dim(` v${ver}`) : '';
+      console.log(chalk.green(`  ✓ ${t.name}`) + verStr + ` found at ${t.path}`);
       available.push(t);
     } else {
       console.log(chalk.red(`  ✗ ${t.name}`) + ` not installed — ${t.install_cmd}`);
@@ -314,7 +334,7 @@ async function runReady(modelFilter?: string): Promise<void> {
 
       if (result.error) {
         // Model returned an error result (auth, timeout, etc.)
-        const authMsg = detectAuthIssue(tool.name, result.error);
+        const authMsg = detectAuthError(tool.name, result.error);
         return { name: tool.name, ok: false, elapsed, error: authMsg ?? result.error.slice(0, 120) };
       }
 
@@ -323,7 +343,7 @@ async function runReady(modelFilter?: string): Promise<void> {
     } catch (err: unknown) {
       const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
       const msg = err instanceof Error ? err.message : String(err);
-      const authMsg = detectAuthIssue(tool.name, msg);
+      const authMsg = detectAuthError(tool.name, msg);
       return { name: tool.name, ok: false, elapsed, error: authMsg ?? msg.slice(0, 120) };
     }
   });
@@ -699,10 +719,14 @@ async function main(): Promise<void> {
   const modelNames = opts.models.split(',').map((m) => m.trim()).filter(Boolean);
   const tools = await detectTools(modelNames);
 
+  const cliVersions: Record<string, string | null> = {};
   for (const tool of tools) {
     progress.addItem(tool.name);
     if (tool.available) {
-      progress.updateItem(tool.name, 'done', `found at ${tool.path ?? tool.command}`);
+      const ver = getCliVersion(tool.command);
+      cliVersions[tool.command] = ver;
+      const verStr = ver ? ` v${ver}` : '';
+      progress.updateItem(tool.name, 'done', `found at ${tool.path ?? tool.command}${verStr}`);
     } else {
       progress.updateItem(tool.name, 'skipped', 'not installed (skipping)');
     }
@@ -742,14 +766,14 @@ async function main(): Promise<void> {
   mkdirSync(resultsDir, { recursive: true });
 
   if (opts.verbose) {
-    console.error(`Results directory: ${resultsDir}`);
+    process.stdout.write(`[verbose] Results directory: ${resultsDir}\n`);
   }
 
   const startTime = Date.now();
 
-  // Start a spinner per available model
+  // Start a spinner per available model (with timeout for elapsed display)
   for (const tool of availableTools) {
-    progress.startSpinner(tool.name, 'examining codebase…');
+    progress.startSpinner(tool.name, 'examining codebase…', timeout);
   }
 
   // Run all models in parallel; Promise.allSettled so one failure doesn't
@@ -760,13 +784,36 @@ async function main(): Promise<void> {
       const model = await loadModel(tool.command);
       model.contextOnly = opts.contextOnly;
       const result = await model.analyze(prompt, context, resultsDir, timeout, nice);
-      const elapsed = ((Date.now() - modelStart) / 1000).toFixed(1) + 's';
-      progress.stopSpinner(tool.name, 'done', `${result.findings.length} findings (${elapsed})`);
+      const elapsedMs = Date.now() - modelStart;
+      const elapsed = (elapsedMs / 1000).toFixed(1) + 's';
+
+      // Enrich result with structured metadata
+      result.version = cliVersions[tool.command] ?? null;
+      result.elapsed_ms = elapsedMs;
+      result.context_truncated = model.lastBuildTruncated;
+
+      // Detect parse-only failures (model responded but couldn't produce JSON)
+      if (result.findings.length === 0 && result.error?.includes('plain text')) {
+        result.status = 'succeeded';
+        result.parsed_as = 'plain_text';
+        progress.stopSpinner(tool.name, 'done',
+          `0 findings — prose response, not JSON (${elapsed})`);
+      } else if (result.error) {
+        result.status = 'failed';
+        result.failure_kind = classifyFailure(result.error);
+        result.needs_auth = result.failure_kind === 'auth';
+        const hint = detectAuthError(tool.name, result.error);
+        progress.stopSpinner(tool.name, 'failed', hint ?? result.error.slice(0, 100));
+      } else {
+        result.status = 'succeeded';
+        result.parsed_as = 'json';
+        progress.stopSpinner(tool.name, 'done', `${result.findings.length} findings (${elapsed})`);
+      }
       return { tool, result, error: null as string | null };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      const authMsg = detectAuthIssue(tool.name, msg);
-      progress.stopSpinner(tool.name, 'failed', authMsg ?? msg.slice(0, 100));
+      const hint = detectAuthError(tool.name, msg);
+      progress.stopSpinner(tool.name, 'failed', hint ?? msg.slice(0, 100));
       return { tool, result: null as ModelResult | null, error: msg };
     }
   });
@@ -782,17 +829,27 @@ async function main(): Promise<void> {
       continue;
     }
     const { tool, result, error } = outcome.value;
-    if (result) {
+    if (result && !result.needs_auth) {
       successResults.push(result);
+    } else if (result?.needs_auth) {
+      failedModels.push({ name: tool.name, error: result.error ?? 'auth required' });
     } else {
       failedModels.push({ name: tool.name, error: error ?? 'unknown error' });
     }
   }
 
+  // Warn about context truncation
+  const truncatedModels = successResults.filter((r) => r.context_truncated);
+  if (truncatedModels.length > 0) {
+    progress.addItem('Context truncation');
+    progress.updateItem('Context truncation', 'skipped',
+      'some files/diffs were truncated — analysis may be incomplete');
+  }
+
   if (successResults.length === 0) {
     console.error('\nError: All models failed.\n');
     for (const fm of failedModels) {
-      const authMsg = detectAuthIssue(fm.name, fm.error);
+      const authMsg = detectAuthError(fm.name, fm.error);
       console.error(`  ${fm.name}: ${authMsg ?? fm.error.slice(0, 200)}`);
     }
     process.exit(1);
@@ -936,7 +993,7 @@ async function main(): Promise<void> {
   }
 
   if (opts.verbose) {
-    console.error(`\nMerged results saved to: ${mergedPath}`);
+    process.stdout.write(`[verbose] Merged results saved to: ${mergedPath}\n`);
   }
 }
 

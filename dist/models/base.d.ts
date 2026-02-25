@@ -20,6 +20,8 @@ export declare abstract class BaseModel {
      * result, saves parsed JSON to resultsDir, returns ModelResult.
      */
     analyze(prompt: string, context: ScanContext, resultsDir: string, timeout?: number, nice?: number): Promise<ModelResult>;
+    /** Track whether context was truncated during prompt building. */
+    lastBuildTruncated: boolean;
     /** Build the full prompt string from the template and scan context. */
     buildPrompt(prompt: string, context: ScanContext): string;
     /**

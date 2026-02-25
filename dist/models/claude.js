@@ -21,7 +21,7 @@ export class ClaudeModel extends SubprocessModel {
      * CLAUDECODE env var is unset so Claude can run from within Claude Code sessions.
      */
     _buildCommand(_promptFile) {
-        const cmd = ['claude', '-p', '--output-format', 'text'];
+        const cmd = [...this.command, '-p', '--output-format', 'text'];
         return {
             cmd,
             env: { CLAUDECODE: undefined }, // Unset to allow nested sessions
