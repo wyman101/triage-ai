@@ -14,7 +14,7 @@ import {
   writeFileSync,
   readFileSync,
 } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import which from 'which';
 
 import { TriageProgress, plainTeamLine, plainReportLine } from './progress.js';
@@ -256,6 +256,112 @@ function writeMemory(merged: MergedResult, prompt: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Ready check — quick smoke test for all models
+// ---------------------------------------------------------------------------
+
+async function runReady(modelFilter?: string): Promise<void> {
+  const chalk = (await import('chalk')).default;
+  const requestedModels = modelFilter
+    ? modelFilter.split(',').map((m) => m.trim().toLowerCase()).filter(Boolean)
+    : ['claude', 'gemini', 'codex'];
+
+  console.log(`\ntriage-ai v${VERSION} — ready check\n`);
+
+  // 1. Detect CLIs
+  const tools = await detectTools(requestedModels);
+  const available: CliTool[] = [];
+
+  for (const t of tools) {
+    if (t.available) {
+      console.log(chalk.green(`  ✓ ${t.name}`) + ` found at ${t.path}`);
+      available.push(t);
+    } else {
+      console.log(chalk.red(`  ✗ ${t.name}`) + ` not installed — ${t.install_cmd}`);
+    }
+  }
+
+  if (available.length === 0) {
+    console.log(chalk.red('\nNo AI CLIs found. Install at least one and retry.'));
+    process.exit(1);
+  }
+
+  // 2. Minimal context — no repo scanning
+  const emptyContext: ScanContext = {
+    is_git_repo: false,
+    has_diff: false,
+    git_diff: '',
+    git_status: '',
+    git_log: '',
+    tree: '',
+    files: [],
+    prompt: 'Say hello in one sentence.',
+    root: process.cwd(),
+  };
+
+  // 3. Run each model in parallel with a short timeout
+  console.log('\nTesting models…\n');
+
+  const tmpResults = join(tmpdir(), `triage-ready-${Date.now()}`);
+  mkdirSync(tmpResults, { recursive: true });
+
+  const tests = available.map(async (tool) => {
+    const t0 = Date.now();
+    try {
+      const model = await loadModel(tool.command);
+      model.contextOnly = true;
+      const result = await model.analyze('Say hello in one sentence.', emptyContext, tmpResults, 30, 10);
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+
+      if (result.error) {
+        // Model returned an error result (auth, timeout, etc.)
+        const authMsg = detectAuthIssue(tool.name, result.error);
+        return { name: tool.name, ok: false, elapsed, error: authMsg ?? result.error.slice(0, 120) };
+      }
+
+      const snippet = (result.summary || result.raw_output || '').replace(/\n/g, ' ').slice(0, 80);
+      return { name: tool.name, ok: true, elapsed, snippet };
+    } catch (err: unknown) {
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      const msg = err instanceof Error ? err.message : String(err);
+      const authMsg = detectAuthIssue(tool.name, msg);
+      return { name: tool.name, ok: false, elapsed, error: authMsg ?? msg.slice(0, 120) };
+    }
+  });
+
+  const results = await Promise.all(tests);
+
+  // 4. Report
+  let passed = 0;
+  for (const r of results) {
+    if (r.ok) {
+      console.log(chalk.green(`  ✓ ${r.name}`) + ` responded in ${r.elapsed}s` +
+        ('snippet' in r ? chalk.gray(` — "${r.snippet}"`) : ''));
+      passed++;
+    } else {
+      console.log(chalk.red(`  ✗ ${r.name}`) + ` failed (${r.elapsed}s)` +
+        ('error' in r ? chalk.gray(` — ${r.error}`) : ''));
+    }
+  }
+
+  // Clean up temp dir
+  try {
+    const { rm } = await import('node:fs/promises');
+    await rm(tmpResults, { recursive: true, force: true });
+  } catch { /* best effort */ }
+
+  console.log('');
+  if (passed === results.length) {
+    console.log(chalk.green(`All ${passed} model${passed === 1 ? '' : 's'} ready.`));
+  } else if (passed > 0) {
+    console.log(chalk.yellow(`${passed}/${results.length} models ready.`) +
+      ' Fix failing models or use --models to select working ones.');
+  } else {
+    console.log(chalk.red('No models responding.') + ' Check authentication — run each CLI interactively first.');
+    process.exit(1);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Setup wizard
 // ---------------------------------------------------------------------------
 
@@ -458,9 +564,13 @@ async function main(): Promise<void> {
     .option('-v, --verbose', 'Verbose output', false)
     .option('--mcp', 'Start MCP server instead of running triage', false);
 
-  // Setup sub-command — handle before parse so we can await it
+  // Sub-commands — handle before parse so we can await them
   if (process.argv[2] === 'setup') {
     await runSetup();
+    process.exit(0);
+  }
+  if (process.argv[2] === 'ready') {
+    await runReady(process.argv[3]); // optional: model filter e.g. "claude,gemini"
     process.exit(0);
   }
 
