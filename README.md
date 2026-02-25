@@ -40,13 +40,14 @@ Each AI CLI runs in **non-interactive pipe mode** — they can read and explore 
 | Gemini CLI | `-p` (print mode) | Reads files, searches, analyzes — no interactive writes |
 | OpenAI Codex | `--sandbox read-only` | Full auto-approve in a read-only sandbox — cannot write |
 
-Secrets (API keys, passwords, private keys, AWS credentials) are redacted from any context sent to the models. Sensitive files (`.env`, credentials, binaries) are excluded automatically.
+Secrets (API keys, passwords, private keys, AWS credentials, GitHub tokens, npm tokens, Slack tokens, Stripe keys, Anthropic/OpenAI keys) are redacted from any context sent to the models. Sensitive files (`.env`, credentials, binaries) are excluded automatically.
 
 ## Install
 
 ```bash
 npm install -g triage-ai
 triage-ai setup              # detects installed CLIs, offers to install missing ones
+triage-ai ready              # smoke test — verifies each model can respond
 ```
 
 Requires [Node.js](https://nodejs.org/) 18+ and at least one AI CLI:
@@ -76,6 +77,9 @@ triage-ai --remember --out report.md "full security audit"
 
 # Preview patches without applying
 triage-ai --dry-run "fix the SQL injection"
+
+# Restrict models to pre-gathered context only (faster, no filesystem exploration)
+triage-ai --context-only "review this code for issues"
 ```
 
 ### Second-opinion on AI plans
@@ -102,16 +106,18 @@ Each model independently evaluates the plan against your actual codebase — exp
 
 ## Example Output
 
+### TTY mode (interactive terminal)
+
 ```
-┌ triage-ai v1.0.7
+┌ triage-ai v1.3.0
 │
 ├ Intake
 │  ✓ Scanned repository          42 files, 3 modified
 │  ✓ Built context package        186 KB across 28 files
 │
 ├ Triage Team
-│  ✓ Claude                       found at /usr/local/bin/claude
-│  ✓ Gemini                       found at /usr/local/bin/gemini
+│  ✓ Claude                       found at /usr/local/bin/claude v2.1.50
+│  ✓ Gemini                       found at /usr/local/bin/gemini v0.30.0
 │  ✗ Codex                        not installed (skipping)
 │
 ├ Assessment
@@ -128,11 +134,60 @@ Each model independently evaluates the plan against your actual codebase — exp
 └ Done in 52.3s — 22 findings, 4 consensus
 ```
 
+### Non-TTY mode (CI / AI orchestrators)
+
+When piped or run by an AI orchestrator (e.g. Claude Code), triage-ai outputs machine-parseable markers:
+
+```
+=== triage-ai v1.3.0 ===
+
+[phase:1/6] intake — Intake
+[intake] Scanning repository…
+[intake] Scanning repository ✓ (42 files)
+[intake] Built context package ✓ (186 KB across 42 files)
+
+[phase:2/6] team — Triage Team
+[team] Claude ✓ (found at /usr/local/bin/claude v2.1.50)
+[team] Gemini ✓ (found at /usr/local/bin/gemini v0.30.0)
+[team] Claude ✓, Gemini ✓
+
+[phase:3/6] assess — Assessment
+[assess] Claude…
+[assess] Gemini…
+[assess] Claude… 15s
+[assess] Gemini… 15s
+[assess] Gemini ✓ (14 findings (38.2s))
+[assess] Claude ✓ (16 findings (47.3s))
+
+[phase:4/6] diag — Diagnosis
+[diag] Clustered findings ✓ (22 unique issues from 2 models)
+[diag] Consensus detected ✓ (4 issues confirmed by 2+ models)
+
+[phase:5/6] report — Report
+[report] Generated report ✓ (3 blockers, 5 high, 8 medium, 6 low)
+[report] 3 S0, 5 S1, 8 S2, 6 S3
+
+=== TRIAGE COMPLETE ===
+Time: 52.3s | Findings: 22 | Consensus: 4
+Severity: 3 blockers, 5 high, 8 medium, 6 low
+
+Model Results:
+  ✓ claude   16 findings in 47.3s
+  ✓ gemini   14 findings in 38.2s
+======================
+
+=== REPORT START ===
+# Triage Report
+...
+=== REPORT END ===
+```
+
 ## CLI Reference
 
 ```
 triage-ai [PROMPT] [OPTIONS]
 triage-ai setup                  # detect CLIs, install missing, show auth hints
+triage-ai ready [models]         # smoke test all or specific models
 ```
 
 | Option | Default | Description |
@@ -140,11 +195,13 @@ triage-ai setup                  # detect CLIs, install missing, show auth hints
 | `--models` | `claude,gemini,codex` | Which models to use (comma-separated) |
 | `--diff-only` | off | Only analyze git diff |
 | `--max-files` | 200 | Max files in initial context (agents explore beyond this) |
+| `--context-only` | off | Restrict models to pre-gathered context (faster, no exploration) |
 | `--format` | `md` | Output format: `md` or `json` |
 | `--out` | stdout | Write report to file |
 | `--apply` | off | Apply patches (creates git branch first) |
 | `--dry-run` | off | Preview patches without applying |
 | `--timeout` | 300 | Per-model timeout in seconds |
+| `--nice` | 10 | Nice level for subprocess priority |
 | `--remember` | off | Save findings to CLAUDE.md, GEMINI.md, AGENTS.md |
 | `--forget` | — | Remove triage findings from memory files |
 | `--verbose` | off | Detailed progress output |
@@ -186,11 +243,29 @@ Then use `/triage "find security issues"` in Claude Code.
 
 ## Configuration
 
+### Model overrides
+
 ```bash
 export TRIAGE_CLAUDE_CMD="claude"              # override CLI command
 export TRIAGE_GEMINI_CMD="gemini"
 export TRIAGE_CODEX_CMD="codex"
 export TRIAGE_GEMINI_MODEL="gemini-2.5-pro"    # override Gemini model
+```
+
+### Quota probes (optional)
+
+If you set API keys, triage-ai will check your rate limit headroom before starting analysis:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."          # enables Anthropic quota probe
+export OPENAI_API_KEY="sk-..."                 # enables OpenAI quota probe
+# Gemini has no proactive quota API — quota is detected reactively via 429 errors
+```
+
+### Other environment variables
+
+```bash
+export TRIAGE_HEARTBEAT_MS=15000               # non-TTY heartbeat interval (default 15s)
 ```
 
 ## Disclaimer
@@ -207,6 +282,7 @@ triage-ai is a wrapper that orchestrates third-party AI CLI tools. By using it, 
 ```bash
 git clone https://github.com/wyman101/triage-ai.git
 cd triage-ai && npm install && npm run build
+npm test                     # runs vitest (18 tests)
 ```
 
 ## License
