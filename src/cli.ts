@@ -25,10 +25,12 @@ import { startMcpServer } from './mcp-server.js';
 import { BaseModel } from './models/base.js';
 
 // ---------------------------------------------------------------------------
-// Version (aligned with package.json)
+// Version — read from package.json so it stays in sync automatically
 // ---------------------------------------------------------------------------
 
-const VERSION = '1.0.7';
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
+const VERSION: string = (_require('../package.json') as { version: string }).version;
 
 // ---------------------------------------------------------------------------
 // Config path

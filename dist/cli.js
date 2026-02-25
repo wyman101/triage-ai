@@ -15,9 +15,11 @@ import { RepoScanner } from './scanner.js';
 import { MergeEngine, mergedResultToDict } from './merge.js';
 import { startMcpServer } from './mcp-server.js';
 // ---------------------------------------------------------------------------
-// Version (aligned with package.json)
+// Version — read from package.json so it stays in sync automatically
 // ---------------------------------------------------------------------------
-const VERSION = '1.0.7';
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
+const VERSION = _require('../package.json').version;
 // ---------------------------------------------------------------------------
 // Config path
 // ---------------------------------------------------------------------------
