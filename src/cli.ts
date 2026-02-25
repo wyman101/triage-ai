@@ -25,14 +25,9 @@ import { detectAuthError, authHint } from './types.js';
 import { startMcpServer } from './mcp-server.js';
 import { BaseModel } from './models/base.js';
 import { spawnSync } from 'node:child_process';
+import { runQuotaProbes, formatQuotaProbe, isQuotaCritical } from './quota.js';
 
-// ---------------------------------------------------------------------------
-// Version — read from package.json so it stays in sync automatically
-// ---------------------------------------------------------------------------
-
-import { createRequire } from 'node:module';
-const _require = createRequire(import.meta.url);
-const VERSION: string = (_require('../package.json') as { version: string }).version;
+import { VERSION } from './version.js';
 
 // ---------------------------------------------------------------------------
 // Config path
@@ -222,7 +217,7 @@ function writeMemory(merged: MergedResult, prompt: string): void {
 
   const lines: string[] = [
     '<!-- triage-ai:start -->',
-    `## Triage Findings (${new Date().toISOString().slice(0, 10)})`,
+    `## Triage Constraints & Prevention Rules (${new Date().toISOString().slice(0, 10)})`,
     '',
     `**Prompt:** ${prompt}`,
     '',
@@ -231,13 +226,18 @@ function writeMemory(merged: MergedResult, prompt: string): void {
         ? `, ${merged.consensus.length} consensus`
         : ''),
     '',
+    '**IMPORTANT: The following issues MUST be addressed before merging/deploying:**',
+    '',
   ];
 
   for (const cluster of allFindings.slice(0, 20)) {
     const rep = cluster.findings[0];
     const models = [...cluster.models].join(', ');
+    const directive = rep?.severity === 'S0' ? 'MUST FIX (blocker):'
+      : rep?.severity === 'S1' ? 'DO NOT ignore:'
+      : 'SHOULD address:';
     lines.push(
-      `- **[${rep?.severity ?? 'S3'}]** ${rep?.title ?? 'Unknown'} ` +
+      `- **[${rep?.severity ?? 'S3'}] ${directive}** ${rep?.title ?? 'Unknown'} ` +
         `(\`${rep?.location?.path ?? 'unknown'}:${rep?.location?.start_line ?? 0}\`) — ${models}`,
     );
   }
@@ -740,6 +740,21 @@ async function main(): Promise<void> {
     );
   }
 
+  // Optional pre-flight quota probes (requires API keys in env)
+  const quotaProbes = await runQuotaProbes(modelNames);
+  for (const probe of quotaProbes) {
+    if (probe.available) {
+      const critical = isQuotaCritical(probe);
+      const label = `${probe.provider} quota`;
+      progress.addItem(label);
+      if (critical) {
+        progress.updateItem(label, 'failed', formatQuotaProbe(probe) + ' ⚠ critically low');
+      } else {
+        progress.updateItem(label, 'done', formatQuotaProbe(probe));
+      }
+    }
+  }
+
   if (availableTools.length === 0) {
     console.error('\nError: No AI CLI tools available.\n');
     console.error('Install at least one of the following:\n');
@@ -838,12 +853,13 @@ async function main(): Promise<void> {
     }
   }
 
-  // Warn about context truncation
+  // Warn about context truncation — list which models were affected
   const truncatedModels = successResults.filter((r) => r.context_truncated);
   if (truncatedModels.length > 0) {
+    const names = truncatedModels.map((r) => r.model).join(', ');
     progress.addItem('Context truncation');
     progress.updateItem('Context truncation', 'skipped',
-      'some files/diffs were truncated — analysis may be incomplete');
+      `some files/diffs were truncated — analysis may be incomplete`);
   }
 
   if (successResults.length === 0) {
@@ -987,14 +1003,16 @@ async function main(): Promise<void> {
   const totalSec = (Date.now() - startTime) / 1000;
 
   // Build model status summary for non-TTY display
+  const anyTruncated = successResults.some((r) => r.context_truncated);
   const modelStatuses = successResults.map((r) => ({
     name: r.model,
     status: 'done',
     findings: r.findings.length,
     time: r.elapsed_ms ? (r.elapsed_ms / 1000).toFixed(1) + 's' : '?',
+    parsed_as: r.parsed_as,
   }));
   for (const fm of failedModels) {
-    modelStatuses.push({ name: fm.name, status: 'failed', findings: 0, time: '-' });
+    modelStatuses.push({ name: fm.name, status: 'failed', findings: 0, time: '-', parsed_as: undefined });
   }
 
   progress.finish(totalSec, totalFindings, merged.consensus.length, modelStatuses, {
@@ -1002,11 +1020,18 @@ async function main(): Promise<void> {
     s1: merged.high.length,
     s2: merged.medium.length,
     s3: merged.low.length,
-  });
+  }, anyTruncated);
 
   // Print report to stdout if not writing to file
   if (!opts.out) {
-    console.log('\n' + report);
+    if (process.stdout.isTTY) {
+      console.log('\n' + report);
+    } else {
+      // Delimited report block for AI orchestrators to extract
+      console.log('\n=== REPORT START ===');
+      console.log(report);
+      console.log('=== REPORT END ===');
+    }
   }
 
   if (opts.verbose) {

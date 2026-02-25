@@ -9,14 +9,7 @@
 import chalk, { type ChalkInstance } from 'chalk';
 import ora, { type Ora } from 'ora';
 import type { ProgressPhase, PhaseItem } from './types.js';
-import { createRequire } from 'node:module';
-
-// ---------------------------------------------------------------------------
-// Version — read from package.json so it stays in sync automatically
-// ---------------------------------------------------------------------------
-
-const _require = createRequire(import.meta.url);
-const VERSION: string = (_require('../package.json') as { version: string }).version;
+import { VERSION } from './version.js';
 
 // ---------------------------------------------------------------------------
 // Box-drawing helpers
@@ -61,6 +54,12 @@ interface TrackedItem extends PhaseItem {
 }
 
 // ---------------------------------------------------------------------------
+// Configurable heartbeat interval (env override for different orchestrators)
+// ---------------------------------------------------------------------------
+
+const HEARTBEAT_MS = parseInt(process.env.TRIAGE_HEARTBEAT_MS ?? '', 10) || 15_000;
+
+// ---------------------------------------------------------------------------
 // TriageProgress
 // ---------------------------------------------------------------------------
 
@@ -92,9 +91,10 @@ export class TriageProgress {
       const colour = phaseColour(phase);
       process.stdout.write(chalk.dim(BOX.mid) + ' ' + colour.bold(title) + '\n');
     } else {
-      // Plain mode: print phase header for readability
+      // Plain mode: machine-parseable phase header with fraction and phase ID
       const num = this._phaseNumber();
-      process.stdout.write(`\n--- Phase ${num}: ${title} ---\n`);
+      const total = 6;
+      process.stdout.write(`\n[phase:${num}/${total}] ${this._phaseName()} — ${title}\n`);
     }
   }
 
@@ -185,13 +185,14 @@ export class TriageProgress {
     } else {
       process.stdout.write(`[${this._phaseName()}] ${label}…\n`);
 
-      // Periodic status for non-TTY (CI / AI orchestrators)
+      // Periodic heartbeat for non-TTY (CI / AI orchestrators)
+      // Default 15s, configurable via TRIAGE_HEARTBEAT_MS env var
       item._timer = setInterval(() => {
         const elapsed = Math.round((Date.now() - item._startTime!) / 1000);
         const warnStr = timeoutSec && elapsed > timeoutSec * 0.8
           ? ' (approaching timeout)' : '';
         process.stdout.write(`[${this._phaseName()}] ${label}… ${elapsed}s${warnStr}\n`);
-      }, 30_000);
+      }, HEARTBEAT_MS);
     }
   }
 
@@ -235,8 +236,9 @@ export class TriageProgress {
     totalTime: number,
     totalFindings: number,
     consensusCount: number,
-    modelStatuses?: Array<{ name: string; status: string; findings: number; time: string }>,
+    modelStatuses?: Array<{ name: string; status: string; findings: number; time: string; parsed_as?: string }>,
     severities?: { s0: number; s1: number; s2: number; s3: number },
+    contextTruncated?: boolean,
   ): void {
     this._stopAllSpinners();
 
@@ -254,13 +256,18 @@ export class TriageProgress {
       // Rich plain-mode summary for AI orchestrators
       process.stdout.write(`\n=== TRIAGE COMPLETE ===\n`);
       process.stdout.write(`Time: ${timeStr} | Findings: ${totalFindings} | Consensus: ${consensusCount}\n`);
+      if (contextTruncated) {
+        process.stdout.write(`⚠ Context was truncated — analysis may be incomplete for large files\n`);
+      }
       if (severities) {
         process.stdout.write(`Severity: ${severities.s0} blockers, ${severities.s1} high, ${severities.s2} medium, ${severities.s3} low\n`);
       }
       if (modelStatuses && modelStatuses.length > 0) {
         process.stdout.write(`\nModel Results:\n`);
         for (const m of modelStatuses) {
-          process.stdout.write(`  ${m.status === 'done' ? '✓' : '✗'} ${m.name.padEnd(8)} ${m.findings} findings in ${m.time}\n`);
+          const sym = m.status === 'done' ? '✓' : '✗';
+          const parseNote = m.parsed_as === 'plain_text' ? ' (prose)' : '';
+          process.stdout.write(`  ${sym} ${m.name.padEnd(8)} ${m.findings} findings in ${m.time}${parseNote}\n`);
         }
       }
       process.stdout.write(`======================\n`);
@@ -276,6 +283,8 @@ export class TriageProgress {
         chalk.dim(BOX.top) + ' ' + chalk.bold.white('triage-ai') +
         ' ' + chalk.dim('v' + VERSION) + '\n',
       );
+    } else {
+      process.stdout.write(`=== triage-ai v${VERSION} ===\n`);
     }
   }
 
@@ -311,9 +320,16 @@ export class TriageProgress {
 
   private _plainItem(item: TrackedItem): void {
     const phase = this._phaseName();
-    const sym = item.status === 'done' ? '✓' : item.status === 'failed' ? '✗' : '—';
+    const sym = item.status === 'done' ? '✓'
+      : item.status === 'failed' ? '✗'
+      : item.status === 'running' ? '»'
+      : '—';
     const detail = item.detail ? ` (${item.detail})` : '';
-    process.stdout.write(`[${phase}] ${item.label} ${sym}${detail}\n`);
+    // Include elapsed time as a separate field when available
+    const elapsed = item._startTime
+      ? ` elapsed=${((Date.now() - item._startTime) / 1000).toFixed(1)}s`
+      : '';
+    process.stdout.write(`[${phase}] ${item.label} ${sym}${detail}${elapsed}\n`);
   }
 
   private _sym(status: PhaseItem['status']): string {

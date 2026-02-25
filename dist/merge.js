@@ -21,6 +21,7 @@ export class MergeEngine {
      */
     merge(results) {
         const merged = {
+            model_runs: [],
             blockers: [],
             high: [],
             medium: [],
@@ -32,11 +33,23 @@ export class MergeEngine {
             questions: [],
             summaries: {},
         };
-        // Collect all findings
+        // Collect all findings and per-model runtime metadata
         const allFindings = [];
         for (const result of results) {
             merged.summaries[result.model] = result.summary;
             merged.questions.push(...result.questions);
+            // Capture per-model runtime metadata
+            merged.model_runs.push({
+                model: result.model,
+                status: result.status ?? 'succeeded',
+                elapsed_ms: result.elapsed_ms,
+                findings_count: result.findings.length,
+                failure_kind: result.failure_kind,
+                needs_auth: result.needs_auth,
+                version: result.version,
+                context_truncated: result.context_truncated,
+                parsed_as: result.parsed_as,
+            });
             for (const finding of result.findings) {
                 // Ensure model is set on each finding
                 const f = { ...finding, model: result.model };
@@ -203,6 +216,7 @@ function clusterToDict(cluster) {
  */
 export function mergedResultToDict(merged) {
     return {
+        model_runs: merged.model_runs,
         blockers: merged.blockers.map(clusterToDict),
         high: merged.high.map(clusterToDict),
         medium: merged.medium.map(clusterToDict),

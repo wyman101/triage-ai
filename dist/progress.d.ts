@@ -48,12 +48,13 @@ export declare class TriageProgress {
         status: string;
         findings: number;
         time: string;
+        parsed_as?: string;
     }>, severities?: {
         s0: number;
         s1: number;
         s2: number;
         s3: number;
-    }): void;
+    }, contextTruncated?: boolean): void;
     /**
      * Print the very first header line.  Call once at startup.
      */

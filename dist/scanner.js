@@ -35,6 +35,22 @@ const SECRET_PATTERNS = [
     // AWS
     [/AKIA[0-9A-Z]{16}/g, '[REDACTED_AWS_KEY]'],
     [/(aws[_-]?secret[_-]?access[_-]?key)\s*[:=]\s*["']?[\w/+=]{40}["']?/gi, '[REDACTED_AWS_SECRET]'],
+    // GitHub tokens (classic PAT, fine-grained, OAuth, app tokens)
+    [/gh[pousr]_[A-Za-z0-9_]{36,}/g, '[REDACTED_GITHUB_TOKEN]'],
+    [/github_pat_[A-Za-z0-9_]{22,}/g, '[REDACTED_GITHUB_PAT]'],
+    // npm tokens
+    [/npm_[A-Za-z0-9]{36,}/g, '[REDACTED_NPM_TOKEN]'],
+    // Slack tokens and webhooks
+    [/xox[boaprs]-[A-Za-z0-9-]{10,}/g, '[REDACTED_SLACK_TOKEN]'],
+    [/hooks\.slack\.com\/services\/[A-Za-z0-9/]+/g, '[REDACTED_SLACK_WEBHOOK]'],
+    // Stripe keys
+    [/[sr]k_(live|test)_[A-Za-z0-9]{20,}/g, '[REDACTED_STRIPE_KEY]'],
+    // Google API keys / service accounts
+    [/AIza[A-Za-z0-9_-]{35}/g, '[REDACTED_GOOGLE_API_KEY]'],
+    // Anthropic API keys
+    [/sk-ant-[A-Za-z0-9_-]{20,}/g, '[REDACTED_ANTHROPIC_KEY]'],
+    // OpenAI API keys
+    [/sk-[A-Za-z0-9]{20,}/g, '[REDACTED_OPENAI_KEY]'],
     // Generic long hex/base64 strings that look like secrets
     [/(key|secret|token|password)\s*[:=]\s*["']?[a-f0-9]{32,}["']?/gi, '[REDACTED_HEX_SECRET]'],
 ];

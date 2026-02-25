@@ -31,10 +31,11 @@ export class PatchApplicator {
     applyPatches(patches, createBranch = true, branchName) {
         if (patches.length === 0)
             return 0;
-        // Create branch if requested
+        // Create branch if requested — fail-fast to protect current branch
         if (createBranch) {
             if (!this._createBranch(branchName)) {
-                console.log('Warning: Failed to create branch, applying to current branch');
+                console.error('Error: Failed to create branch. Aborting patch application to protect current branch.');
+                return 0;
             }
         }
         let applied = 0;

@@ -91,7 +91,20 @@ export interface Conflict {
   details: string;
 }
 
+export interface ModelRunSummary {
+  model: string;
+  status: ModelStatus;
+  elapsed_ms?: number;
+  findings_count: number;
+  failure_kind?: FailureKind;
+  needs_auth?: boolean;
+  version?: string | null;
+  context_truncated?: boolean;
+  parsed_as?: 'json' | 'plain_text';
+}
+
 export interface MergedResult {
+  model_runs: ModelRunSummary[];
   blockers: FindingCluster[];
   high: FindingCluster[];
   medium: FindingCluster[];

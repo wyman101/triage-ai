@@ -21,9 +21,7 @@ import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { createRequire } from 'node:module';
-const _require = createRequire(import.meta.url);
-const MCP_VERSION = _require('../package.json').version;
+import { VERSION as MCP_VERSION } from './version.js';
 import { RepoScanner } from './scanner.js';
 import { MergeEngine, mergedResultToDict } from './merge.js';
 // ---------------------------------------------------------------------------
