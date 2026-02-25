@@ -2,14 +2,22 @@
  * Triage progress display — rich (TTY) and plain (CI/piped) modes.
  *
  * Rich TTY mode uses chalk colours and ora spinners, rendered with
- * box-drawing characters.  Plain mode emits simple bracketed lines
- * so CI logs stay readable.
+ * box-drawing characters.  During the assessment phase, a bordered
+ * panel shows all models at once with in-place updates.
+ *
+ * Plain mode emits simple bracketed lines so CI logs stay readable.
  */
 import type { ProgressPhase } from './types.js';
 export declare class TriageProgress {
     private readonly isTTY;
     private currentPhase;
     private items;
+    private _panelActive;
+    private _panelRendered;
+    private _panelLineCount;
+    private _panelTimer?;
+    private _spinnerFrame;
+    private _panelTimeoutSec;
     constructor();
     /**
      * Begin a new phase.  Finishes any active spinner from the previous phase
@@ -30,6 +38,9 @@ export declare class TriageProgress {
     /**
      * Start an ora spinner for the given item.  The spinner persists until
      * `stopSpinner` is called.
+     *
+     * During assessment phase in TTY mode, items are rendered in a bordered
+     * panel instead of individual ora spinners.
      */
     startSpinner(label: string, detail?: string, timeoutSec?: number): void;
     /**
@@ -59,6 +70,21 @@ export declare class TriageProgress {
      * Print the very first header line.  Call once at startup.
      */
     printHeader(): void;
+    /**
+     * Render the assessment panel — a bordered box showing all model statuses.
+     * Uses ANSI cursor movement to redraw in-place.
+     *
+     * ╭──────────────────────────────────────────────────╮
+     * │  ⠋ Claude     examining codebase…          32s  │
+     * │  ✓ Gemini     14 findings                 38.2s │
+     * │  ⠋ Codex      examining codebase…          35s  │
+     * ╰──────────────────────────────────────────────────╯
+     */
+    private _renderPanel;
+    /**
+     * Stop the panel animation and show cursor.
+     */
+    private _stopPanel;
     private _itemText;
     private _printItem;
     private _plainItem;

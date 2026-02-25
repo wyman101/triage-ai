@@ -2,8 +2,10 @@
  * Triage progress display — rich (TTY) and plain (CI/piped) modes.
  *
  * Rich TTY mode uses chalk colours and ora spinners, rendered with
- * box-drawing characters.  Plain mode emits simple bracketed lines
- * so CI logs stay readable.
+ * box-drawing characters.  During the assessment phase, a bordered
+ * panel shows all models at once with in-place updates.
+ *
+ * Plain mode emits simple bracketed lines so CI logs stay readable.
  */
 
 import chalk, { type ChalkInstance } from 'chalk';
@@ -21,7 +23,18 @@ const BOX = {
   pipe:   '│',
   bottom: '└',
   dot:    '·',
+  hLine:  '─',
+  tl:     '╭',
+  tr:     '╮',
+  bl:     '╰',
+  br:     '╯',
 } as const;
+
+// ---------------------------------------------------------------------------
+// Spinner frames (braille dots)
+// ---------------------------------------------------------------------------
+
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 // ---------------------------------------------------------------------------
 // Status symbols and colours
@@ -60,6 +73,13 @@ interface TrackedItem extends PhaseItem {
 const HEARTBEAT_MS = parseInt(process.env.TRIAGE_HEARTBEAT_MS ?? '', 10) || 15_000;
 
 // ---------------------------------------------------------------------------
+// Assessment panel constants
+// ---------------------------------------------------------------------------
+
+const PANEL_WIDTH = 48;  // Inner content width (between border chars)
+const PANEL_UPDATE_MS = 80;  // Spinner animation speed
+
+// ---------------------------------------------------------------------------
 // TriageProgress
 // ---------------------------------------------------------------------------
 
@@ -67,6 +87,14 @@ export class TriageProgress {
   private readonly isTTY: boolean;
   private currentPhase: ProgressPhase | null = null;
   private items: Map<string, TrackedItem> = new Map();
+
+  // Assessment panel state (TTY only)
+  private _panelActive = false;
+  private _panelRendered = false;
+  private _panelLineCount = 0;
+  private _panelTimer?: ReturnType<typeof setInterval>;
+  private _spinnerFrame = 0;
+  private _panelTimeoutSec = 300;
 
   constructor() {
     this.isTTY = Boolean(process.stdout.isTTY);
@@ -81,6 +109,7 @@ export class TriageProgress {
    * and prints the phase header.
    */
   startPhase(phase: ProgressPhase, title: string): void {
+    this._stopPanel();
     this._stopAllSpinners();
     this.items.clear();
 
@@ -111,7 +140,7 @@ export class TriageProgress {
     };
     this.items.set(label, item);
 
-    if (this.isTTY) {
+    if (this.isTTY && !this._panelActive) {
       const detailStr = detail ? chalk.dim('  ' + detail) : '';
       process.stdout.write(
         chalk.dim(BOX.pipe) + '  ' + SYM_PENDING + ' ' + chalk.dim(label) + detailStr + '\n',
@@ -132,7 +161,7 @@ export class TriageProgress {
       return this.updateItem(label, status, detail);
     }
 
-    if (item.spinner) {
+    if (item.spinner || this._panelActive) {
       this.stopSpinner(label, status === 'failed' ? 'failed' : 'done', detail);
       return;
     }
@@ -150,6 +179,9 @@ export class TriageProgress {
   /**
    * Start an ora spinner for the given item.  The spinner persists until
    * `stopSpinner` is called.
+   *
+   * During assessment phase in TTY mode, items are rendered in a bordered
+   * panel instead of individual ora spinners.
    */
   startSpinner(label: string, detail?: string, timeoutSec?: number): void {
     if (!this.items.has(label)) {
@@ -161,7 +193,28 @@ export class TriageProgress {
     item.status = 'running';
     item._startTime = Date.now();
     if (detail !== undefined) item.detail = detail;
+    if (timeoutSec) this._panelTimeoutSec = timeoutSec;
 
+    // ---- Assessment panel mode (TTY only) ----
+    if (this.isTTY && this.currentPhase === 'assessment') {
+      if (!this._panelActive) {
+        this._panelActive = true;
+        this._panelRendered = false;
+        // Hide cursor for clean panel rendering
+        process.stdout.write('\x1b[?25l');
+      }
+      // Start the panel animation timer (once)
+      if (!this._panelTimer) {
+        this._panelTimer = setInterval(() => {
+          this._spinnerFrame = (this._spinnerFrame + 1) % SPINNER_FRAMES.length;
+          this._renderPanel();
+        }, PANEL_UPDATE_MS);
+      }
+      this._renderPanel();
+      return;
+    }
+
+    // ---- Standard ora spinner mode (TTY, non-assessment) ----
     if (this.isTTY) {
       const spinner = ora({
         text: this._itemText(item),
@@ -183,10 +236,10 @@ export class TriageProgress {
         }
       }, 15_000);
     } else {
+      // ---- Plain mode (non-TTY) ----
       process.stdout.write(`[${this._phaseName()}] ${label}…\n`);
 
       // Periodic heartbeat for non-TTY (CI / AI orchestrators)
-      // Default 15s, configurable via TRIAGE_HEARTBEAT_MS env var
       item._timer = setInterval(() => {
         const elapsed = Math.round((Date.now() - item._startTime!) / 1000);
         const warnStr = timeoutSec && elapsed > timeoutSec * 0.8
@@ -212,6 +265,20 @@ export class TriageProgress {
     item.status = status;
     if (detail !== undefined) item.detail = detail;
 
+    // ---- Panel mode ----
+    if (this._panelActive) {
+      this._renderPanel();
+      // If all items are done/failed, finalize the panel
+      const allDone = [...this.items.values()].every(
+        (i) => i.status === 'done' || i.status === 'failed' || i.status === 'skipped',
+      );
+      if (allDone) {
+        this._stopPanel();
+      }
+      return;
+    }
+
+    // ---- Standard ora spinner ----
     if (this.isTTY && item.spinner) {
       const text = this._itemText(item);
       if (status === 'done') {
@@ -240,6 +307,7 @@ export class TriageProgress {
     severities?: { s0: number; s1: number; s2: number; s3: number },
     contextTruncated?: boolean,
   ): void {
+    this._stopPanel();
     this._stopAllSpinners();
 
     const timeStr = totalTime.toFixed(1) + 's';
@@ -285,6 +353,117 @@ export class TriageProgress {
       );
     } else {
       process.stdout.write(`=== triage-ai v${VERSION} ===\n`);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Assessment panel rendering (TTY only)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Render the assessment panel — a bordered box showing all model statuses.
+   * Uses ANSI cursor movement to redraw in-place.
+   *
+   * ╭──────────────────────────────────────────────────╮
+   * │  ⠋ Claude     examining codebase…          32s  │
+   * │  ✓ Gemini     14 findings                 38.2s │
+   * │  ⠋ Codex      examining codebase…          35s  │
+   * ╰──────────────────────────────────────────────────╯
+   */
+  private _renderPanel(): void {
+    const items = [...this.items.values()];
+    if (items.length === 0) return;
+
+    // Lines: top border + one per model + bottom border
+    const lineCount = items.length + 2;
+
+    // If already rendered, move cursor up to overwrite
+    if (this._panelRendered) {
+      process.stdout.write(`\x1b[${this._panelLineCount}A`);
+    }
+
+    const frame = SPINNER_FRAMES[this._spinnerFrame];
+    const topBorder = chalk.dim(BOX.pipe) + '  ' + chalk.dim(BOX.tl + BOX.hLine.repeat(PANEL_WIDTH) + BOX.tr);
+    const botBorder = chalk.dim(BOX.pipe) + '  ' + chalk.dim(BOX.bl + BOX.hLine.repeat(PANEL_WIDTH) + BOX.br);
+
+    // Clear line and write top border
+    process.stdout.write('\x1b[2K' + topBorder + '\n');
+
+    for (const item of items) {
+      let sym: string;
+      let nameStr: string;
+      let detailStr: string;
+      let timeStr: string;
+
+      const elapsed = item._startTime
+        ? ((Date.now() - item._startTime) / 1000).toFixed(1) + 's'
+        : '';
+
+      switch (item.status) {
+        case 'running': {
+          sym = chalk.yellow(frame);
+          nameStr = chalk.white(item.label);
+          detailStr = chalk.dim(item.detail ?? 'running');
+          const warn = this._panelTimeoutSec && item._startTime &&
+            (Date.now() - item._startTime) / 1000 > this._panelTimeoutSec * 0.8
+            ? chalk.red(' ⚠') : '';
+          timeStr = chalk.dim(elapsed) + warn;
+          break;
+        }
+        case 'done':
+          sym = chalk.green('✓');
+          nameStr = chalk.green(item.label);
+          detailStr = chalk.white(item.detail ?? 'done');
+          timeStr = '';  // elapsed is in the detail
+          break;
+        case 'failed':
+          sym = chalk.red('✗');
+          nameStr = chalk.red(item.label);
+          detailStr = chalk.red(item.detail ?? 'failed');
+          timeStr = '';
+          break;
+        default:
+          sym = chalk.dim('·');
+          nameStr = chalk.dim(item.label);
+          detailStr = chalk.dim('waiting');
+          timeStr = '';
+      }
+
+      // Build the line content (plain, no ANSI) for padding calculation
+      const namePad = item.label.padEnd(12);
+      const plainDetail = item.detail ?? (item.status === 'running' ? 'running' : item.status);
+      const plainTime = item.status === 'running' ? elapsed : '';
+      const plainContent = `  ${' '} ${namePad}${plainDetail}`;
+      // Available space for time = PANEL_WIDTH - plainContent.length - 2 (right padding)
+      const timeSpace = Math.max(0, PANEL_WIDTH - plainContent.length - plainTime.length - 2);
+
+      const content = `  ${sym} ${item.status === 'done' ? chalk.green(namePad) : item.status === 'failed' ? chalk.red(namePad) : chalk.white(namePad)}${detailStr}${' '.repeat(timeSpace)}${timeStr}  `;
+
+      // Pad to exact PANEL_WIDTH + trim for consistent border alignment
+      const line = chalk.dim(BOX.pipe) + '  ' + chalk.dim('│') + content + chalk.dim('│');
+      process.stdout.write('\x1b[2K' + line + '\n');
+    }
+
+    process.stdout.write('\x1b[2K' + botBorder + '\n');
+
+    this._panelLineCount = lineCount;
+    this._panelRendered = true;
+  }
+
+  /**
+   * Stop the panel animation and show cursor.
+   */
+  private _stopPanel(): void {
+    if (this._panelTimer) {
+      clearInterval(this._panelTimer);
+      this._panelTimer = undefined;
+    }
+    if (this._panelActive) {
+      // Final render to show completed state
+      this._renderPanel();
+      this._panelActive = false;
+      // Show cursor again
+      process.stdout.write('\x1b[?25h');
     }
   }
 
