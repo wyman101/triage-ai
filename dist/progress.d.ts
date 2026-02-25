@@ -43,7 +43,17 @@ export declare class TriageProgress {
      * @param totalFindings   Number of unique findings
      * @param consensusCount  Number confirmed by 2+ models
      */
-    finish(totalTime: number, totalFindings: number, consensusCount: number): void;
+    finish(totalTime: number, totalFindings: number, consensusCount: number, modelStatuses?: Array<{
+        name: string;
+        status: string;
+        findings: number;
+        time: string;
+    }>, severities?: {
+        s0: number;
+        s1: number;
+        s2: number;
+        s3: number;
+    }): void;
     /**
      * Print the very first header line.  Call once at startup.
      */
@@ -53,6 +63,7 @@ export declare class TriageProgress {
     private _plainItem;
     private _sym;
     private _phaseName;
+    private _phaseNumber;
     private _stopAllSpinners;
 }
 /**

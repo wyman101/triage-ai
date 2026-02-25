@@ -985,7 +985,24 @@ async function main(): Promise<void> {
   // -------------------------------------------------------------------------
 
   const totalSec = (Date.now() - startTime) / 1000;
-  progress.finish(totalSec, totalFindings, merged.consensus.length);
+
+  // Build model status summary for non-TTY display
+  const modelStatuses = successResults.map((r) => ({
+    name: r.model,
+    status: 'done',
+    findings: r.findings.length,
+    time: r.elapsed_ms ? (r.elapsed_ms / 1000).toFixed(1) + 's' : '?',
+  }));
+  for (const fm of failedModels) {
+    modelStatuses.push({ name: fm.name, status: 'failed', findings: 0, time: '-' });
+  }
+
+  progress.finish(totalSec, totalFindings, merged.consensus.length, modelStatuses, {
+    s0: merged.blockers.length,
+    s1: merged.high.length,
+    s2: merged.medium.length,
+    s3: merged.low.length,
+  });
 
   // Print report to stdout if not writing to file
   if (!opts.out) {

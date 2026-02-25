@@ -6,31 +6,30 @@ Save this file as `~/.claude/commands/triage.md` to use as `/triage` in Claude C
 
 ## Behavior
 
-When running triage, follow these guidelines:
+**IMPORTANT: Run the triage command in the background** using `run_in_background: true` on the Bash tool. This lets you relay progress to the user as it happens instead of showing a truncated bash window.
 
-### Before running
-Tell the user: "Running triage with Claude, Gemini and Codex in parallel. Each model will analyze the codebase independently, then findings are merged and deduplicated."
+### While triage is running
+1. Tell the user: "Running triage with Claude, Gemini and Codex in parallel — I'll relay progress as each model completes."
+2. Check the output file periodically (every 15-20s) to relay status updates
+3. When you see `[assess] ModelName ✓` lines, tell the user immediately, e.g. "Claude finished — 5 findings in 12.3s"
+4. When you see `=== TRIAGE COMPLETE ===`, read the full output and present the report
 
-### Interpreting output
-The CLI outputs a progress display followed by a markdown report. Watch for:
-
-- **Auth failures**: If you see "not authenticated" or "rate limited" for a model, tell the user the specific fix:
+### Interpreting results
+- **Auth failures**: If a model shows "not authenticated" or "rate limited", tell the user the fix:
   - Claude: `claude auth login`
   - Gemini: `gemini auth login`
   - Codex: `codex` interactively, or set `OPENAI_API_KEY`
-- **Severity levels**: S0 = blockers (fix immediately), S1 = high, S2 = medium, S3 = low
-- **Consensus findings**: Issues found by 2+ models — these are highest confidence
-- **Conflicts**: When models disagree on severity, note both perspectives
-- **Prose responses**: If a model returns "prose response, not JSON" it means the model responded but could not produce structured findings — mention this to the user
-- **Context truncation**: If you see "context truncated", warn the user that large files or diffs were cut short and findings may be incomplete
+- **Severity levels**: S0 = blockers (fix now), S1 = high, S2 = medium, S3 = low
+- **Consensus findings** (2+ models agree): highest confidence — present these first
+- **Prose responses**: "prose response, not JSON" means the model responded but couldn't produce structured findings
+- **Context truncation**: warn the user that large files were cut short
 
 ### After triage completes
-1. Summarize: "X models completed, Y findings total, Z consensus"
-2. If any model failed, explain why and how to fix it (auth, rate limit, timeout)
-3. Present S0/S1 findings first with full detail
-4. For S2/S3, provide a brief list unless the user asks for detail
+1. Show a summary: "X models completed, Y findings (Z consensus)"
+2. If any model failed, explain why and how to fix it
+3. Present S0/S1 findings with full detail
+4. For S2/S3, provide a brief list unless the user asks for more
 5. If patches were generated, offer to show or apply them
-6. Highlight consensus findings (agreed by 2+ models) as highest priority
 
 ## Execute
 

@@ -91,8 +91,11 @@ export class TriageProgress {
       process.stdout.write('\n');
       const colour = phaseColour(phase);
       process.stdout.write(chalk.dim(BOX.mid) + ' ' + colour.bold(title) + '\n');
+    } else {
+      // Plain mode: print phase header for readability
+      const num = this._phaseNumber();
+      process.stdout.write(`\n--- Phase ${num}: ${title} ---\n`);
     }
-    // Plain mode: phase name appears inline on each item line.
   }
 
   /**
@@ -228,7 +231,13 @@ export class TriageProgress {
    * @param totalFindings   Number of unique findings
    * @param consensusCount  Number confirmed by 2+ models
    */
-  finish(totalTime: number, totalFindings: number, consensusCount: number): void {
+  finish(
+    totalTime: number,
+    totalFindings: number,
+    consensusCount: number,
+    modelStatuses?: Array<{ name: string; status: string; findings: number; time: string }>,
+    severities?: { s0: number; s1: number; s2: number; s3: number },
+  ): void {
     this._stopAllSpinners();
 
     const timeStr = totalTime.toFixed(1) + 's';
@@ -242,7 +251,19 @@ export class TriageProgress {
         ' — ' + chalk.yellow(summary) + '\n',
       );
     } else {
-      process.stdout.write(`[done] ${timeStr} — ${summary}\n`);
+      // Rich plain-mode summary for AI orchestrators
+      process.stdout.write(`\n=== TRIAGE COMPLETE ===\n`);
+      process.stdout.write(`Time: ${timeStr} | Findings: ${totalFindings} | Consensus: ${consensusCount}\n`);
+      if (severities) {
+        process.stdout.write(`Severity: ${severities.s0} blockers, ${severities.s1} high, ${severities.s2} medium, ${severities.s3} low\n`);
+      }
+      if (modelStatuses && modelStatuses.length > 0) {
+        process.stdout.write(`\nModel Results:\n`);
+        for (const m of modelStatuses) {
+          process.stdout.write(`  ${m.status === 'done' ? '✓' : '✗'} ${m.name.padEnd(8)} ${m.findings} findings in ${m.time}\n`);
+        }
+      }
+      process.stdout.write(`======================\n`);
     }
   }
 
@@ -313,6 +334,18 @@ export class TriageProgress {
       case 'report':     return 'report';
       case 'memory':     return 'memory';
       default:           return 'triage';
+    }
+  }
+
+  private _phaseNumber(): number {
+    switch (this.currentPhase) {
+      case 'intake':     return 1;
+      case 'team':       return 2;
+      case 'assessment': return 3;
+      case 'diagnosis':  return 4;
+      case 'report':     return 5;
+      case 'memory':     return 6;
+      default:           return 0;
     }
   }
 
