@@ -276,12 +276,23 @@ export abstract class BaseModel {
 // Subprocess base
 // ---------------------------------------------------------------------------
 
+/**
+ * Maximum byte length for any single CLI argument.
+ * Linux ARG_MAX is typically 2 MB; we use 128 KB as a safe threshold.
+ * If any argument in the built command exceeds this, it is automatically
+ * replaced with the path to a temp file containing the prompt text.
+ * This prevents E2BIG errors when adapters accidentally pass prompt text
+ * as a positional CLI argument.
+ */
+const MAX_ARG_BYTES = 128 * 1024;
+
 export abstract class SubprocessModel extends BaseModel {
   /**
    * Run model via subprocess.
    *
-   * - Writes prompt to a temp file (for debugging / codex adapter)
+   * - Writes prompt to a temp file (always — used for large-arg fallback and debugging)
    * - Builds command via _buildCommand()
+   * - Guards against oversized CLI args (auto-replaces with temp file path)
    * - Applies env overrides (undefined value = delete key)
    * - Spawns with detached:true so we can kill the whole process group
    * - Passes prompt via stdin
@@ -290,7 +301,7 @@ export abstract class SubprocessModel extends BaseModel {
    * - Cleans up temp file in finally
    */
   override async _runModel(prompt: string, timeout: number, nice: number): Promise<string> {
-    // Write prompt to a temp file for debugging / codex
+    // Write prompt to a temp file — used as fallback for oversized args and for debugging
     const tmpPath = join(tmpdir(), `triage-${randomBytes(8).toString('hex')}.txt`);
     await writeFile(tmpPath, prompt, 'utf8');
 
@@ -299,6 +310,19 @@ export abstract class SubprocessModel extends BaseModel {
 
     try {
       const { cmd, env: envOverrides } = this._buildCommand(tmpPath);
+
+      // Guard: if any CLI argument exceeds MAX_ARG_BYTES, automatically replace
+      // it with the temp file path.  This catches adapter bugs where prompt text
+      // is accidentally passed as a positional arg (causes E2BIG / null-byte errors).
+      for (let i = 0; i < cmd.length; i++) {
+        if (Buffer.byteLength(cmd[i], 'utf8') > MAX_ARG_BYTES) {
+          process.stderr.write(
+            `[triage] arg ${i} of ${this.name} command exceeded ${MAX_ARG_BYTES} bytes — ` +
+            `automatically replaced with temp file path\n`,
+          );
+          cmd[i] = tmpPath;
+        }
+      }
 
       // Build clean environment: copy process.env then apply overrides
       const runEnv: Record<string, string> = {};
@@ -427,9 +451,14 @@ export abstract class SubprocessModel extends BaseModel {
   /**
    * Build the command and env overrides for this model.
    *
+   * IMPORTANT: Never put the prompt text itself into a CLI argument.
+   * Use stdin (the base class pipes the prompt automatically) or
+   * reference the temp file via `promptFile`.  Any individual argument
+   * exceeding 128 KB is automatically replaced with the temp file path
+   * as a safety net.
+   *
    * @param promptFile  Path to temp file containing the prompt text.
-   *                    Most adapters ignore this (they use stdin).
-   *                    The Codex adapter reads it and passes the text as an arg.
+   *                    Use this if the CLI supports reading from a file.
    * @returns           `cmd` — argument list (no shell, no bash -c);
    *                    `env` — overrides (undefined value = delete from env)
    */

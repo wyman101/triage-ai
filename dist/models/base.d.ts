@@ -42,8 +42,9 @@ export declare abstract class SubprocessModel extends BaseModel {
     /**
      * Run model via subprocess.
      *
-     * - Writes prompt to a temp file (for debugging / codex adapter)
+     * - Writes prompt to a temp file (always — used for large-arg fallback and debugging)
      * - Builds command via _buildCommand()
+     * - Guards against oversized CLI args (auto-replaces with temp file path)
      * - Applies env overrides (undefined value = delete key)
      * - Spawns with detached:true so we can kill the whole process group
      * - Passes prompt via stdin
@@ -61,9 +62,14 @@ export declare abstract class SubprocessModel extends BaseModel {
     /**
      * Build the command and env overrides for this model.
      *
+     * IMPORTANT: Never put the prompt text itself into a CLI argument.
+     * Use stdin (the base class pipes the prompt automatically) or
+     * reference the temp file via `promptFile`.  Any individual argument
+     * exceeding 128 KB is automatically replaced with the temp file path
+     * as a safety net.
+     *
      * @param promptFile  Path to temp file containing the prompt text.
-     *                    Most adapters ignore this (they use stdin).
-     *                    The Codex adapter reads it and passes the text as an arg.
+     *                    Use this if the CLI supports reading from a file.
      * @returns           `cmd` — argument list (no shell, no bash -c);
      *                    `env` — overrides (undefined value = delete from env)
      */

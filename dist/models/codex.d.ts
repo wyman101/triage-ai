@@ -2,8 +2,8 @@
  * Codex model adapter.
  *
  * Uses the Codex CLI for analysis.
- * Prompt is read from the temp file and passed as a positional argument —
- * no shell expansion, no bash -c.
+ * Prompt is passed via stdin using `-` as the prompt argument to avoid
+ * E2BIG errors when the context is large (>128KB).
  *
  * Ported from triage_cli/models/codex.py
  */
@@ -14,10 +14,10 @@ export declare class CodexModel extends SubprocessModel {
      * Build Codex CLI command.
      *
      * Uses --full-auto --sandbox read-only for non-interactive read-only operation.
-     * We read the prompt file synchronously and pass the text directly —
-     * no shell expansion, no bash -c.
+     * Prompt is read from stdin (base class writes it); `-` tells codex to read
+     * the prompt from stdin instead of expecting a positional argument.
      */
-    _buildCommand(promptFile: string): {
+    _buildCommand(_promptFile: string): {
         cmd: string[];
         env: Record<string, string | undefined>;
     };
