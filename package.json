@@ -1,7 +1,7 @@
 {
   "name": "triage-ai",
-  "version": "1.6.0",
-  "description": "Multi-model code triage — run Claude, Gemini and Codex in parallel to analyze your codebase and merge their findings",
+  "version": "1.6.1",
+  "description": "Multi-model AI code triage — run Claude, Gemini and Codex in parallel. Available as a Claude Code skill or MCP server for any AI editor.",
   "type": "module",
   "main": "dist/cli.js",
   "bin": {
@@ -20,6 +20,7 @@
     "dist",
     "README.md",
     "LICENSE",
+    "SKILL.md",
     "examples"
   ],
   "keywords": [
@@ -44,7 +45,11 @@
     "linter",
     "bug-detection",
     "consensus",
-    "llm"
+    "llm",
+    "claude-code",
+    "claude-code-skill",
+    "skill",
+    "plugin"
   ],
   "author": {
     "name": "wyman101",

@@ -1,8 +1,8 @@
 # triage-ai
 
-**Multi-model AI code review. Run Claude Code, Gemini CLI and OpenAI Codex in parallel — each independently explores your codebase, then triage merges their findings into one prioritized report.**
+**Multi-model AI code triage — run Claude, Gemini and Codex in parallel. Available as a Claude Code skill or MCP server for any AI editor.**
 
-![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg) ![npm](https://img.shields.io/npm/v/triage-ai.svg) ![MIT License](https://img.shields.io/badge/license-MIT-green.svg) ![Claude | Gemini | Codex](https://img.shields.io/badge/models-Claude%20%7C%20Gemini%20%7C%20Codex-purple.svg) ![MCP Compatible](https://img.shields.io/badge/MCP-compatible-orange.svg)
+![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg) ![npm](https://img.shields.io/npm/v/triage-ai.svg) ![MIT License](https://img.shields.io/badge/license-MIT-green.svg) ![Claude | Gemini | Codex](https://img.shields.io/badge/models-Claude%20%7C%20Gemini%20%7C%20Codex-purple.svg) ![MCP Compatible](https://img.shields.io/badge/MCP-compatible-orange.svg) ![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-skill-blue.svg)
 
 ---
 
@@ -216,7 +216,77 @@ triage-ai ready [models]         # smoke test all or specific models
 | **S2** | Medium | N+1 queries, missing validation |
 | **S3** | Low | Naming conventions, dead code |
 
-## MCP Server
+## AI Editor Integration
+
+triage-ai works in any AI editor — as a **Claude Code skill** (auto-discovered, richest experience) or as an **MCP server** (universal, works everywhere).
+
+### Claude Code (Skill — recommended)
+
+triage-ai ships with a `SKILL.md` that Claude Code discovers automatically after install. Claude will know when and how to run triage without any configuration.
+
+```bash
+npm install -g triage-ai
+# That's it — ask Claude to "run a triage" or "find security issues"
+```
+
+You can also use the `/triage` slash command:
+
+```bash
+cp examples/claude-code-skill.md ~/.claude/commands/triage.md
+# Then: /triage "find security vulnerabilities"
+```
+
+### Claude Code (MCP)
+
+Alternatively, add triage as an MCP server in `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "triage": {
+      "command": "triage-ai",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+### Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "triage": {
+      "command": "triage-ai",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+For project-level context, copy the example memory file:
+
+```bash
+cp examples/gemini-md-example.md your-project/GEMINI.md
+```
+
+### OpenAI Codex
+
+Add to your Codex MCP configuration, or run directly:
+
+```bash
+codex "run triage-ai to find bugs"
+```
+
+For project-level context, copy the example memory file:
+
+```bash
+cp examples/agents-md-example.md your-project/AGENTS.md
+```
+
+### Cursor / Windsurf / Cline / VS Code (Copilot) / Zed / Continue
 
 Add to your editor's MCP configuration:
 
@@ -230,16 +300,6 @@ Add to your editor's MCP configuration:
   }
 }
 ```
-
-Works with Claude Desktop, Claude Code, Cursor, Windsurf, Cline, VS Code (Copilot), Zed, and Continue.
-
-### Claude Code Slash Command
-
-```bash
-cp examples/claude-code-skill.md ~/.claude/commands/triage.md
-```
-
-Then use `/triage "find security issues"` in Claude Code.
 
 ## Configuration
 
