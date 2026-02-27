@@ -1,12 +1,12 @@
 ---
 name: triage
-description: Triage — Run parallel AI code analysis with Claude, Gemini and Codex. Use this skill when the user asks to "triage", "run triage", "code review with multiple models", "multi-model analysis", "security audit", "find bugs", "run a security scan", mentions "triage-ai", or wants to run Claude, Gemini and Codex in parallel to analyze their codebase. Also use when the user wants a second opinion on AI-generated code or plans.
+description: Triage — Collaborative AI code review with Claude, Gemini and Codex. Each model independently explores the codebase, then findings are merged with consensus scoring. Use this skill when the user asks to "triage", "run triage", "code review", "security audit", "find bugs", "run a security scan", "second opinion", mentions "triage-ai", or wants collaborative multi-model analysis of their codebase. Also use when the user wants a second opinion on AI-generated code or plans.
 version: 1.6.1
 ---
 
-# Triage — Run parallel AI code analysis with Claude, Gemini and Codex
+# Triage — Collaborative AI code review with Claude, Gemini and Codex
 
-Run `triage-ai` to launch Claude Code, Gemini CLI and OpenAI Codex in parallel. Each model independently explores the codebase, then findings are merged into one prioritized report with consensus scoring.
+Run `triage-ai` to launch Claude Code, Gemini CLI and OpenAI Codex as a collaborative review team. Each model independently explores the codebase, then findings are merged with consensus scoring into one prioritized report. When multiple models independently flag the same issue, confidence is high.
 
 ## Prerequisites
 

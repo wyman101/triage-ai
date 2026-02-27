@@ -1,7 +1,7 @@
 {
   "name": "triage-ai",
   "version": "1.6.1",
-  "description": "Multi-model AI code triage — run Claude, Gemini and Codex in parallel. Available as a Claude Code skill or MCP server for any AI editor.",
+  "description": "Collaborative AI code review — Claude, Gemini and Codex independently explore your codebase, then triage merges their findings with consensus scoring. Available as a Claude Code skill or MCP server for any AI editor.",
   "type": "module",
   "main": "dist/cli.js",
   "bin": {

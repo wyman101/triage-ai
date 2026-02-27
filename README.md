@@ -1,6 +1,6 @@
 # triage-ai
 
-**Multi-model AI code triage — run Claude, Gemini and Codex in parallel. Available as a Claude Code skill or MCP server for any AI editor.**
+**Collaborative AI code review — Claude, Gemini and Codex independently explore your codebase, then triage merges their findings with consensus scoring into one prioritized report. Available as a Claude Code skill or MCP server for any AI editor.**
 
 ![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg) ![npm](https://img.shields.io/npm/v/triage-ai.svg) ![MIT License](https://img.shields.io/badge/license-MIT-green.svg) ![Claude | Gemini | Codex](https://img.shields.io/badge/models-Claude%20%7C%20Gemini%20%7C%20Codex-purple.svg) ![MCP Compatible](https://img.shields.io/badge/MCP-compatible-orange.svg) ![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-skill-blue.svg)
 
