@@ -1,6 +1,6 @@
 {
   "name": "triage-ai",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Collaborative AI triage for code, plans and architecture — Claude, Gemini and Codex independently analyze your codebase then merge findings with consensus scoring. Security audits, bug hunts, plan reviews, second opinions. Claude Code skill + MCP server.",
   "type": "module",
   "main": "dist/cli.js",

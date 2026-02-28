@@ -25,8 +25,6 @@ import { detectAuthError, authHint } from './types.js';
 import { startMcpServer } from './mcp-server.js';
 import { BaseModel } from './models/base.js';
 import { spawnSync } from 'node:child_process';
-import { runQuotaProbes, formatQuotaProbe, isQuotaCritical } from './quota.js';
-
 import { VERSION } from './version.js';
 
 // ---------------------------------------------------------------------------
@@ -445,7 +443,7 @@ async function runSetup(): Promise<void> {
     const name = tool.command.toLowerCase();
     if (name === 'claude') console.log('  Claude:  claude  (follow the login prompts)');
     if (name === 'gemini') console.log('  Gemini:  gemini  (follow the login prompts)');
-    if (name === 'codex')  console.log('  Codex:   codex   (follow the login prompts, or set OPENAI_API_KEY)');
+    if (name === 'codex')  console.log('  Codex:   codex   (follow the login prompts)');
   }
 
   const config = {
@@ -738,21 +736,6 @@ async function main(): Promise<void> {
     process.stdout.write(
       plainTeamLine(tools.map((t) => ({ name: t.name, available: t.available }))) + '\n',
     );
-  }
-
-  // Optional pre-flight quota probes (requires API keys in env)
-  const quotaProbes = await runQuotaProbes(modelNames);
-  for (const probe of quotaProbes) {
-    if (probe.available) {
-      const critical = isQuotaCritical(probe);
-      const label = `${probe.provider} quota`;
-      progress.addItem(label);
-      if (critical) {
-        progress.updateItem(label, 'failed', formatQuotaProbe(probe) + ' ⚠ critically low');
-      } else {
-        progress.updateItem(label, 'done', formatQuotaProbe(probe));
-      }
-    }
   }
 
   if (availableTools.length === 0) {

@@ -56,7 +56,7 @@ Requires [Node.js](https://nodejs.org/) 18+ and at least one AI CLI:
 |-------|---------|------|
 | **Claude Code** | `npm install -g @anthropic-ai/claude-code` | `claude` (interactive login) |
 | **Gemini CLI** | `npm install -g @google/gemini-cli` | `gemini` (interactive login) |
-| **OpenAI Codex** | `npm install -g @openai/codex` | `codex` (interactive login or `OPENAI_API_KEY`) |
+| **OpenAI Codex** | `npm install -g @openai/codex` | `codex` (interactive login) |
 
 ## Usage
 
@@ -310,16 +310,6 @@ export TRIAGE_CLAUDE_CMD="claude"              # override CLI command
 export TRIAGE_GEMINI_CMD="gemini"
 export TRIAGE_CODEX_CMD="codex"
 export TRIAGE_GEMINI_MODEL="gemini-2.5-pro"    # override Gemini model
-```
-
-### Quota probes (optional)
-
-If you set API keys, triage-ai will check your rate limit headroom before starting analysis:
-
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."          # enables Anthropic quota probe
-export OPENAI_API_KEY="sk-..."                 # enables OpenAI quota probe
-# Gemini has no proactive quota API — quota is detected reactively via 429 errors
 ```
 
 ### Other environment variables

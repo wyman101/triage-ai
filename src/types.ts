@@ -229,20 +229,11 @@ export const AUTH_ERROR_PATTERNS: RegExp[] = [
   /authenticate/i,
   /unauthorized/i,
   /forbidden/i,
-  /api[_\s-]?key/i,
-  /ANTHROPIC_API_KEY/,
-  /GOOGLE_API_KEY/,
-  /OPENAI_API_KEY/,
-  /invalid[_\s-]?key/i,
-  /missing[_\s-]?key/i,
-  /no credentials/i,
   /rate[_\s-]?limit/i,
   /quota exceeded/i,
   /too many requests/i,
   /429/,
   /403/,
-  /billing/i,
-  /subscription required/i,
 ];
 
 /**
@@ -268,13 +259,13 @@ export function authHint(modelName: string, errorMsg: string): string {
     return `rate limited — try again later or use --models ${others}`;
   }
   if (/unauthorized|forbidden|403/.test(lower)) {
-    return `access denied — check your API key or permissions`;
+    return `access denied — check permissions or re-authenticate`;
   }
 
   if (name === 'claude') return 'not authenticated — run: claude auth login';
   if (name === 'gemini') return 'not authenticated — run: gemini auth login';
-  if (name === 'codex')  return 'not authenticated — run: codex (or set OPENAI_API_KEY)';
-  return 'not authenticated — check API key or run the CLI interactively to log in';
+  if (name === 'codex')  return 'not authenticated — run: codex (follow the login prompts)';
+  return 'not authenticated — run the CLI interactively to log in';
 }
 
 // ---------------------------------------------------------------------------

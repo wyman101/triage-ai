@@ -14,7 +14,7 @@ describe('detectAuthError', () => {
   it('detects authentication failures', () => {
     expect(detectAuthError('claude', 'not logged in')).toContain('not authenticated');
     expect(detectAuthError('gemini', 'login required')).toContain('not authenticated');
-    expect(detectAuthError('codex', 'OPENAI_API_KEY missing')).toContain('not authenticated');
+    expect(detectAuthError('codex', 'authentication required')).toContain('not authenticated');
   });
 
   it('detects rate limiting', () => {
@@ -31,7 +31,7 @@ describe('authHint', () => {
   it('gives model-specific auth hints', () => {
     expect(authHint('claude', 'auth error')).toContain('claude auth login');
     expect(authHint('gemini', 'auth error')).toContain('gemini auth login');
-    expect(authHint('codex', 'auth error')).toContain('OPENAI_API_KEY');
+    expect(authHint('codex', 'auth error')).toContain('codex');
   });
 
   it('gives rate limit hint with alternative models', () => {
