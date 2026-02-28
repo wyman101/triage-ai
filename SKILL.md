@@ -1,7 +1,7 @@
 ---
 name: triage
 description: Triage — Collaborative AI analysis with Claude, Gemini and Codex for code review, plan review, security audits, architecture review and bug hunts. Each model independently explores the codebase, then findings are merged with consensus scoring. Use this skill when the user asks to "triage", "run triage", "code review", "security audit", "find bugs", "review this plan", "second opinion", "check for vulnerabilities", "review my changes", "architecture review", "audit", mentions "triage-ai", or wants collaborative multi-model analysis of their code, plans or architecture.
-version: 1.6.1
+version: 1.7.0
 ---
 
 # Triage — Collaborative AI analysis with Claude, Gemini and Codex
@@ -19,7 +19,7 @@ npm install -g triage-ai
 At least one AI CLI must be installed and authenticated:
 - **Claude Code**: `npm install -g @anthropic-ai/claude-code` then `claude auth login`
 - **Gemini CLI**: `npm install -g @google/gemini-cli` then `gemini auth login`
-- **OpenAI Codex**: `npm install -g @openai/codex` then set `OPENAI_API_KEY`
+- **OpenAI Codex**: `npm install -g @openai/codex` then run `codex` (follow the login prompts)
 
 Run `triage-ai ready` to verify which models are available.
 
@@ -72,7 +72,7 @@ triage-ai --context-only "review this code for issues"
 - **Auth failures**: If a model shows "not authenticated" or "rate limited", tell the user the fix:
   - Claude: `claude auth login`
   - Gemini: `gemini auth login`
-  - Codex: `codex` interactively, or set `OPENAI_API_KEY`
+  - Codex: run `codex` interactively (follow the login prompts)
 - **Severity levels**: S0 = blockers (fix now), S1 = high, S2 = medium, S3 = low
 - **Consensus findings** (2+ models agree): highest confidence — present these first
 - **Prose responses**: "(prose)" in model results means the model responded but couldn't produce structured findings

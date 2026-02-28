@@ -25,7 +25,7 @@ Save this file as `~/.claude/commands/triage.md` to use as `/triage` in Claude C
 - **Auth failures**: If a model shows "not authenticated" or "rate limited", tell the user the fix:
   - Claude: `claude auth login`
   - Gemini: `gemini auth login`
-  - Codex: `codex` interactively, or set `OPENAI_API_KEY`
+  - Codex: run `codex` interactively (follow the login prompts)
 - **Severity levels**: S0 = blockers (fix now), S1 = high, S2 = medium, S3 = low
 - **Consensus findings** (2+ models agree): highest confidence — present these first
 - **Prose responses**: "(prose)" in model results means the model responded but couldn't produce structured findings
